@@ -51,7 +51,16 @@ def graph_setting() -> dbc.Card:
 
 
 #####################################################################################################################################################
-def plot_line(fig: go.Figure, splitted_data: dict[str, list[dict]], x_axis: str, y_axis: str, settings: dict) -> None:
+def plot_line(fig: go.Figure, splitted_data: dict[str, pd.DataFrame], x_axis: str, y_axis: str, settings: dict) -> None:
+    """Add the line to the figure.
+
+    Args:
+        fig (go.Figure): The existing figure.
+        splitted_data (dict[str, pd.DataFrame]): Dictionary of key and dataframe pair.
+        x_axis (str): The selected attribute for the x_axis.
+        y_axis (str): The selected attribute for the y_axis.
+        settings (dict): The configuration of the line.
+    """
     if settings["plot_kind"] == "History":
         for key, val in splitted_data.items():
             fig.add_trace(go.Scatter(x=val[x_axis], y=val[y_axis], mode="lines", name=f"trace_{key}"))
@@ -78,6 +87,42 @@ def plot_line(fig: go.Figure, splitted_data: dict[str, list[dict]], x_axis: str,
 
 
 #####################################################################################################################################################
+def plot_bar(fig: go.Figure, splitted_data: dict[str, pd.DataFrame], x_axis: str, y_axis: str, settings: dict) -> None:
+    """Add the line to the figure.
+
+    Args:
+        fig (go.Figure): The existing figure.
+        splitted_data (dict[str, pd.DataFrame]): Dictionary of key and dataframe pair.
+        x_axis (str): The selected attribute for the x_axis.
+        y_axis (str): The selected attribute for the y_axis.
+        settings (dict): The configuration of the line.
+    """
+    if settings["plot_kind"] == "History":
+        for key, val in splitted_data.items():
+            fig.add_trace(go.Bar(x=val[x_axis], y=val[y_axis], name=f"trace_{key}"))
+
+    if settings["plot_kind"] == "Min":
+        for key, val in splitted_data.items():
+            plot_data = val.groupby(by=x_axis)[y_axis].min()
+            fig.add_trace(go.Bar(x=plot_data.index.values, y=plot_data, name=f"min_{key}"))
+
+    if settings["plot_kind"] == "Max":
+        for key, val in splitted_data.items():
+            plot_data = val.groupby(by=x_axis)[y_axis].max()
+            fig.add_trace(go.Bar(x=plot_data.index.values, y=plot_data, name=f"min_{key}"))
+
+    if settings["plot_kind"] == "Median":
+        for key, val in splitted_data.items():
+            plot_data = val.groupby(by=x_axis)[y_axis].median()
+            fig.add_trace(go.Bar(x=plot_data.index.values, y=plot_data, name=f"median_{key}"))
+
+    if settings["plot_kind"] == "Mean":
+        for key, val in splitted_data.items():
+            plot_data = val.groupby(by=x_axis)[y_axis].mean()
+            fig.add_trace(go.Bar(x=plot_data.index.values, y=plot_data, name=f"mean{key}"))
+
+
+#####################################################################################################################################################
 def plot_data(data_table: dict[str, list[dict]], plot_setting: list[dict], x_axis: str, y_axis: str) -> dcc.Graph:
     """Plot the selected tables ans settings.
 
@@ -95,6 +140,9 @@ def plot_data(data_table: dict[str, list[dict]], plot_setting: list[dict], x_axi
         if val["type"] == "Line":
             splitted_data = split_data(data_table, val["group_attributes"])
             plot_line(fig, splitted_data, x_axis, y_axis, val)
+        if val["type"] == "Bar":
+            splitted_data = split_data(data_table, val["group_attributes"])
+            plot_bar(fig, splitted_data, x_axis, y_axis, val)
 
     return dcc.Graph(figure=fig)
 
@@ -139,7 +187,7 @@ def plot_config() -> dbc.Card:
     return dbc.Card(
         [
             html.H1("Add Plot", style={"textAlign": "center"}),
-            html.Div(dcc.Dropdown(["Line"], placeholder="Set Plot Type", id="plot_type"), style={"padding": "10px"}),
+            html.Div(dcc.Dropdown(["Line", "Bar"], placeholder="Set Plot Type", id="plot_type"), style={"padding": "10px"}),
             dbc.Row(
                 [
                     dbc.Col(html.Div(dcc.Dropdown([], id="value_to_plot", style={"padding": "10px"})), width=3),
@@ -148,8 +196,8 @@ def plot_config() -> dbc.Card:
                     ),
                 ]
             ),
-            dbc.Button("Add Plot Config", id="add_plot_config"),
-            dash_table.DataTable(data=[], id="plot_settings", page_size=20),
+            html.Div(dbc.Button("Add Plot Config", id="add_plot_config"), style={"padding": "10px"}),
+            html.Div(dash_table.DataTable(data=[], id="plot_settings", page_size=20), style={"padding": "10px"}),
         ]
     )
 
@@ -166,17 +214,15 @@ def check_line_config(plot_type: str, value_to_plot: str, group_by: list[str]) -
     Returns:
         dict: Dictionary that contains all informations
     """
-    if plot_type != "Line":
+    if plot_type is None:
         return None
     if value_to_plot is None:
         return None
-    if value_to_plot in ["Min", "Max", "Mean", "Median"]:
-        if group_by is None or len(group_by) < 1:
-            return None
 
     return {"type": plot_type, "plot_kind": value_to_plot, "group_attributes": group_by}
 
 
+#####################################################################################################################################################
 @app.callback(
     Output("plot_config_table", "data", allow_duplicate=True),
     Output("plot_type", "value"),
@@ -186,10 +232,22 @@ def check_line_config(plot_type: str, value_to_plot: str, group_by: list[str]) -
     State("plot_type", "value"),
     State("value_to_plot", "value"),
     State("group_by", "value"),
-    State("plot_config_table", "data"),
+    Input("plot_config_table", "data"),
     prevent_initial_call=True,
 )
 def update_plot_config(n_clicks: int, plot_type: str, value_to_plot: str, group_by: list[str], current_config: dict) -> dict:
+    """Update the plot config.
+
+    Args:
+        n_clicks (int): Click event.
+        plot_type (str): The type that should be plotted.
+        value_to_plot (str): Value that should be plotted.
+        group_by (list[str]): Group plot data by this attribute.
+        current_config (dict): The current config.
+
+    Returns:
+        dict: The updated config.
+    """
     if n_clicks is None:
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
@@ -206,17 +264,35 @@ def update_plot_config(n_clicks: int, plot_type: str, value_to_plot: str, group_
     return current_config, input_val, input_val, input_val
 
 
+#####################################################################################################################################################
 @app.callback(Output("plot_config_table", "data", allow_duplicate=True), Input("select_2d_table", "value"), prevent_initial_call=True)
 def reset_table(current_table: dict) -> dict:
+    """Reset the table.
+
+    Args:
+        current_table (dict): Data of the current table.
+
+    Returns:
+        dict: The initial config_table data.
+    """
     if current_table is not None:
         return dash.no_update
     return {"settings": []}
 
 
+#####################################################################################################################################################
 @app.callback(Output("plot_settings", "data"), Input("plot_config_table", "data"))
 def update_plot_settings(plot_config_table: dict) -> list:
+    """Update the plot settings table.
+
+    Args:
+        plot_config_table (dict): The current added config.
+
+    Returns:
+        list: List of dictionary that contains the configuration.
+    """
     if plot_config_table is None or len(plot_config_table.get("settings", [])) < 1:
-        return dash.no_update
+        return []
     return [{key: str(val) for key, val in dataset.items()} for dataset in plot_config_table["settings"]]
 
 
@@ -285,7 +361,7 @@ def update_possible_types(plot_type: str) -> list[str]:
     """
     if plot_type is None:
         return []
-    if plot_type == "Line":
+    if plot_type in ["Line", "Bar"]:
         return ["History", "Min", "Max", "Median", "Mean"]
     return []
 
@@ -324,7 +400,19 @@ def update_selectable_data(table_data: dict[str, list[dict]]) -> list[str]:
         return []
     return list(table_data)
 
+#####################################################################################################################################################
+@app.callback(Output("plot_config_table", "data"), Input("select_2d_table", "value"))
+def reset_config_table(data: dict) -> dict:
+    """Reset the plot_config_table.
 
+    Args:
+        data (dict): The updated select_2d_table.
+
+    Returns:
+        dict: The new plot_config table.
+    """
+    return {"settings": []}
+              
 #####################################################################################################################################################
 @app.callback(Output("selected_table_data", "data"), Input("select_2d_table", "value"), State("table_data", "data"))
 def selected_table(selected_tables: list[str], table_data: dict[str, list[dict]]) -> dict[str, list[dict]]:
@@ -344,12 +432,32 @@ def selected_table(selected_tables: list[str], table_data: dict[str, list[dict]]
     return {key: table_data[key] for key in selected_tables}
 
 
+#####################################################################################################################################################
 def grouping_pd(group: str, data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """Group the dataframe by the attribute values.
+
+    Args:
+        group (str): Attribute name the data should be grouped with.
+        data (dict[str, pd.DataFrame]): The already grouped dataframes.
+
+    Returns:
+        dict[str, pd.DataFrame]: The new grouped dataframe.
+    """
     groups = list(set(data[list(data.keys())[0]][group].tolist()))
-    return {f"{key}_{group}": val[getattr(val, group) == attribute] for key, val in data.items() for attribute in groups}
+    return {f"{key}_{attribute}": val[getattr(val, group) == attribute] for key, val in data.items() for attribute in groups}
 
 
+#####################################################################################################################################################
 def split_data(data: dict, grouping: list[str]) -> dict:
+    """Split dictionary of data in groups.
+
+    Args:
+        data (dict): The dictionary that contaisn the data.
+        grouping (list[str]): List of attributes the data should be grouped.
+
+    Returns:
+        dict: The resulting splitted dataset.
+    """
     res = {key: pd.DataFrame.from_dict(val) for key, val in data.items()}
 
     if grouping is None:
