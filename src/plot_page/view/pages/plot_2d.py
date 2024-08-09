@@ -1,3 +1,4 @@
+"""Functions to visualise the plot_2d page."""
 
 import dash
 import dash_bootstrap_components as dbc
@@ -7,7 +8,7 @@ from dash.dependencies import Input, Output
 from plot_page.app import app
 from plot_page.control.data_operations import check_line_config, filter_columns
 from plot_page.control.plot_functions import plot_data
-from plot_page.view.components.default_component import get_upload_component
+from plot_page.view.components import get_upload_component
 
 
 #####################################################################################################################################################

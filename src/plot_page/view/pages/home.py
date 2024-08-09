@@ -1,3 +1,4 @@
+"""Functions to visualise the home page."""
 
 import dash
 import dash_bootstrap_components as dbc
@@ -5,7 +6,7 @@ from dash import Input, Output, State, dash_table, dcc, html
 
 from plot_page.app import app
 from plot_page.control.data_operations import add_dataset
-from plot_page.view.components.default_component import get_upload_component
+from plot_page.view.components import get_upload_component
 
 
 #####################################################################################################################################################
@@ -82,8 +83,6 @@ def layout() -> html.Div:
     )
 
 
-
-
 #####################################################################################################################################################
 @app.callback(
     Output("table_data", "data", allow_duplicate=True),
@@ -127,7 +126,12 @@ def table_options(table_data: dict[str, list[dict]]) -> list[str]:
 
 
 #####################################################################################################################################################
-@app.callback(Output("current_filter", "data", allow_duplicate=True), Input("table_select", "value"), State("table_data", "data"), prevent_initial_call='initial_duplicate')
+@app.callback(
+    Output("current_filter", "data", allow_duplicate=True),
+    Input("table_select", "value"),
+    State("table_data", "data"),
+    prevent_initial_call="initial_duplicate",
+)
 def table_select(selected_table: str, table_data: dict[str, list]) -> list[dict]:
     """Updated selected table.
 
@@ -183,7 +187,7 @@ def update_table(table_data: list[dict]) -> list[dict]:
     State("filter_drop", "value"),
     State("value_input", "value"),
     State("current_filter", "data"),
-    prevent_initial_call='initial_duplicate'
+    prevent_initial_call="initial_duplicate",
 )
 def filter_table(n_clicks: int, selected_attribute: str, filter_operation: str, filter_value: str, table_data: dict) -> dict:
     """Use filter for this table.

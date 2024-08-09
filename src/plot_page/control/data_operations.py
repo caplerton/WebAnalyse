@@ -1,3 +1,4 @@
+"""Functions for operations on data."""
 
 import base64
 import json
@@ -5,6 +6,7 @@ import json
 import pandas as pd
 
 
+#####################################################################################################################################################
 def filter_columns(selected_data: dict[str, list[dict]]) -> list[str]:
     """Filter common keys of all selected tables.
 
@@ -24,7 +26,8 @@ def filter_columns(selected_data: dict[str, list[dict]]) -> list[str]:
     return list(set(possible_keys[0]).intersection(*possible_keys[1:]))
 
 
-def add_dataset( table_data: dict, add_data: list[dict], name_dataset: str) -> dict:
+#####################################################################################################################################################
+def add_dataset(table_data: dict, add_data: list[dict], name_dataset: str) -> dict:
     """Add a new dataset.
 
     Args:
@@ -43,6 +46,7 @@ def add_dataset( table_data: dict, add_data: list[dict], name_dataset: str) -> d
     return table_data
 
 
+#####################################################################################################################################################
 def convert_uploaded_data(file_name: str, file_structure: str, store_data: dict, table_data: list) -> dict:
     """Convert uploaded data to format that can be used.
 
@@ -74,6 +78,7 @@ def convert_uploaded_data(file_name: str, file_structure: str, store_data: dict,
     return table_data
 
 
+#####################################################################################################################################################
 def prepare_json(contents: str) -> dict[str, list[dict]]:
     """Prepare uploaded json-file.
 
@@ -88,9 +93,8 @@ def prepare_json(contents: str) -> dict[str, list[dict]]:
     return {key: val for key, val in json.loads(decoded).items() if val and isinstance(val, list) and isinstance(val[0], dict)}
 
 
-
-
-def prepare_upload_data(uploaded_data: tuple[str, str], store_data: None |dict[str, dict]) -> dict[str, dict]:
+#####################################################################################################################################################
+def prepare_upload_data(uploaded_data: tuple[str, str], store_data: None | dict[str, dict]) -> dict[str, dict]:
     """Prepare uploaded data and return it as dict.
 
     Args:
@@ -108,6 +112,7 @@ def prepare_upload_data(uploaded_data: tuple[str, str], store_data: None |dict[s
         store_data.update(prepare_json(uploaded_data[1]))
 
     return store_data
+
 
 #####################################################################################################################################################
 def grouping_pd(group: str, data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
@@ -164,5 +169,3 @@ def check_line_config(plot_type: str, value_to_plot: str, group_by: list[str]) -
         return None
 
     return {"type": plot_type, "plot_kind": value_to_plot, "group_attributes": group_by}
-
-

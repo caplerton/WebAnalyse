@@ -1,8 +1,11 @@
+"""Functions for basic python actions."""
+
 import base64
 import json
 import os
 
 
+#####################################################################################################################################################
 def read_json(json_path: str) -> dict:
     """Read json file.
 
@@ -18,6 +21,7 @@ def read_json(json_path: str) -> dict:
         return json.load(json_file)
 
 
+#####################################################################################################################################################
 def write_json(json_path: str, data: dict) -> None:
     """Write dict as json-File.
 
@@ -29,6 +33,7 @@ def write_json(json_path: str, data: dict) -> None:
         json.dump(data, json_file)
 
 
+#####################################################################################################################################################
 def parse_contents(contents: str, filename: str) -> dict[str, dict]:
     """Convert the uploaded file to a json Object.
 
