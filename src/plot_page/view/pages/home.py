@@ -1,17 +1,12 @@
-import base64
-import datetime
-import io
-import json
-import operator
-import os
 
 import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, State, dash_table, dcc, html
 
 from plot_page.app import app
-from plot_page.control.data_operations import add_dataset, prepare_upload_data
+from plot_page.control.data_operations import add_dataset
 from plot_page.view.components.default_component import get_upload_component
+
 
 #####################################################################################################################################################
 def explanation_card() -> html.Div:

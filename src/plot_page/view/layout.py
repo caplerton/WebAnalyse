@@ -1,15 +1,7 @@
-from dash import Dash
-import dash_bootstrap_components as dbc
 
-import base64
-import json
-import os
-
-import dash
 import dash_bootstrap_components as dbc
-from dash import Input, Output, State, dcc, html
+from dash import Input, Output, dcc, html
 from dash.dependencies import Input, Output  # noqa: F811
-
 
 
 def get_topbar() -> dbc.NavbarSimple:

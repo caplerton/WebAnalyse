@@ -1,8 +1,8 @@
 
 import base64
 import json
-from typing import Any
 
+import pandas as pd
 
 
 def filter_columns(selected_data: dict[str, list[dict]]) -> list[str]:
@@ -108,4 +108,61 @@ def prepare_upload_data(uploaded_data: tuple[str, str], store_data: None |dict[s
         store_data.update(prepare_json(uploaded_data[1]))
 
     return store_data
+
+#####################################################################################################################################################
+def grouping_pd(group: str, data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """Group the dataframe by the attribute values.
+
+    Args:
+        group (str): Attribute name the data should be grouped with.
+        data (dict[str, pd.DataFrame]): The already grouped dataframes.
+
+    Returns:
+        dict[str, pd.DataFrame]: The new grouped dataframe.
+    """
+    groups = list(set(data[list(data.keys())[0]][group].tolist()))
+    return {f"{key}_{attribute}": val[getattr(val, group) == attribute] for key, val in data.items() for attribute in groups}
+
+
+#####################################################################################################################################################
+def split_data(data: dict, grouping: list[str]) -> dict:
+    """Split dictionary of data in groups.
+
+    Args:
+        data (dict): The dictionary that contaisn the data.
+        grouping (list[str]): List of attributes the data should be grouped.
+
+    Returns:
+        dict: The resulting splitted dataset.
+    """
+    res = {key: pd.DataFrame.from_dict(val) for key, val in data.items()}
+
+    if grouping is None:
+        return res
+
+    for g in grouping:
+        res = grouping_pd(g, res)
+
+    return res
+
+
+#####################################################################################################################################################
+def check_line_config(plot_type: str, value_to_plot: str, group_by: list[str]) -> dict:
+    """Check if the line configuration is ok.
+
+    Args:
+        plot_type (str): The type that should be plotted.
+        value_to_plot (str): Extended information about what should be plotted.
+        group_by (list[str]): List of attributes the data should be grouped by.
+
+    Returns:
+        dict: Dictionary that contains all informations
+    """
+    if plot_type is None:
+        return None
+    if value_to_plot is None:
+        return None
+
+    return {"type": plot_type, "plot_kind": value_to_plot, "group_attributes": group_by}
+
 
