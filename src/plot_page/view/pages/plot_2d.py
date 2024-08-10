@@ -44,6 +44,50 @@ def graph_setting() -> dbc.Card:
 
 
 #####################################################################################################################################################
+def plot_config() -> dbc.Card:
+    """Create a card to config the plot.
+
+    Returns:
+        dbc.Card: The create card that lets the user decide what to plot.
+    """
+    return dbc.Card(
+        [
+            html.H1("Add Plot", style={"textAlign": "center"}),
+            html.Div(dcc.Dropdown(["Line", "Bar"], placeholder="Set Plot Type", id="plot_type"), style={"padding": "10px"}),
+            dbc.Row(
+                [
+                    dbc.Col(html.Div(dcc.Dropdown([], id="value_to_plot", style={"padding": "10px"})), width=3),
+                    dbc.Col(
+                        html.Div(dcc.Dropdown(placeholder="Group By", options=[], id="group_by", multi=True), style={"padding": "10px"}), width=3
+                    ),
+                ]
+            ),
+            html.Div(dbc.Button("Add Plot Config", id="add_plot_config"), style={"padding": "10px"}),
+            html.Div(dash_table.DataTable(data=[], id="plot_settings", page_size=20), style={"padding": "10px"}),
+        ]
+    )
+
+
+#####################################################################################################################################################
+def layout() -> html.Div:
+    """The 2D-Plot layout.
+
+    Returns:
+        html.Div: The created layout.
+    """
+    return html.Div(
+        [
+            dcc.Store(id="selected_table_data", storage_type="session"),
+            dcc.Store(id="plot_config_table", storage_type="memory"),
+            graph_setting(),
+            plot_config(),
+            html.Div(children=[], id="2d_plot_chart", style={"padding": "20px"}),
+        ],
+        style={"padding": "20px"},
+    )
+
+
+#####################################################################################################################################################
 @app.callback(
     Output("2d_plot_chart", "children"),
     Input("plot_config_table", "data"),
@@ -71,31 +115,6 @@ def create_plot(plot_config_table: list[dict], x_axis: str, y_axis: str, data_ta
     data_to_plot = [{key: val} for key, val in data_table.items()] if use_multi_plot == [] else [data_table]
     res = [plot_data(data, plot_config_table["settings"], x_axis, y_axis) for data in data_to_plot]
     return res
-
-
-#####################################################################################################################################################
-def plot_config() -> dbc.Card:
-    """Create a card to config the plot.
-
-    Returns:
-        dbc.Card: The create card that lets the user decide what to plot.
-    """
-    return dbc.Card(
-        [
-            html.H1("Add Plot", style={"textAlign": "center"}),
-            html.Div(dcc.Dropdown(["Line", "Bar"], placeholder="Set Plot Type", id="plot_type"), style={"padding": "10px"}),
-            dbc.Row(
-                [
-                    dbc.Col(html.Div(dcc.Dropdown([], id="value_to_plot", style={"padding": "10px"})), width=3),
-                    dbc.Col(
-                        html.Div(dcc.Dropdown(placeholder="Group By", options=[], id="group_by", multi=True), style={"padding": "10px"}), width=3
-                    ),
-                ]
-            ),
-            html.Div(dbc.Button("Add Plot Config", id="add_plot_config"), style={"padding": "10px"}),
-            html.Div(dash_table.DataTable(data=[], id="plot_settings", page_size=20), style={"padding": "10px"}),
-        ]
-    )
 
 
 #####################################################################################################################################################
@@ -170,25 +189,6 @@ def update_plot_settings(plot_config_table: dict) -> list:
     if plot_config_table is None or len(plot_config_table.get("settings", [])) < 1:
         return []
     return [{key: str(val) for key, val in dataset.items()} for dataset in plot_config_table["settings"]]
-
-
-#####################################################################################################################################################
-def layout() -> html.Div:
-    """The 2D-Plot layout.
-
-    Returns:
-        html.Div: The created layout.
-    """
-    return html.Div(
-        [
-            dcc.Store(id="selected_table_data", storage_type="session"),
-            dcc.Store(id="plot_config_table", storage_type="memory"),
-            graph_setting(),
-            plot_config(),
-            html.Div(children=[], id="2d_plot_chart", style={"padding": "20px"}),
-        ],
-        style={"padding": "20px"},
-    )
 
 
 #####################################################################################################################################################
