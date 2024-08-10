@@ -88,7 +88,7 @@ def prepare_json(contents: str) -> dict[str, list[dict]]:
     Returns:
         dict[str, list[dict]]: File content that has been converted to the table structure.
     """
-    content_type, content_string = contents.split(",")
+    _, content_string = contents.split(",")
     decoded = base64.b64decode(content_string)
     return {key: val for key, val in json.loads(decoded).items() if val and isinstance(val, list) and isinstance(val[0], dict)}
 

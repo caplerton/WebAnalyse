@@ -4,10 +4,6 @@ from plot_page.control.data_operations import check_line_config
 from plot_page.control.plot_functions import plot_data
 
 
-def get_default_selected_values() -> dict[str, Any]:
-    return {"plot_data": [], "x_axis": None, "y_axis": None, "multi": False}
-
-
 def add_plot_data(click_event: int, plot_type: str, val_type: str, group_attributes: list[str], selected_values: dict[str, Any]) -> dict[str, Any]:
     """Add plot data.
 

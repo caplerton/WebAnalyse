@@ -45,7 +45,7 @@ def parse_contents(contents: str, filename: str) -> dict[str, dict]:
     Returns:
         dict[str, dict]: Dictionary with filename as key and content as dictionary.
     """
-    content_type, content_string = contents.split(",")
+    _, content_string = contents.split(",")
     decoded = base64.b64decode(content_string)
     if filename.__contains__(".json"):
         return {filename: json.loads(decoded)}
