@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+from typing import Any
 
 
 #####################################################################################################################################################
@@ -49,3 +50,16 @@ def parse_contents(contents: str, filename: str) -> dict[str, dict]:
     if filename.__contains__(".json"):
         return {filename: json.loads(decoded)}
     return {}
+
+
+#####################################################################################################################################################
+def dictionary_values_to_string(input_dict: dict[str, Any]) -> list[dict[str, str]]:
+    """Convert the values of dictionary to string.
+
+    Args:
+        input_dict (dict[str, Any]): The dictionary that should be transformed.
+
+    Returns:
+        list[dict[str, str]]: The resulting List of dictionary values.
+    """
+    return [{key: str(val) for key, val in dataset.items()} for dataset in input_dict]

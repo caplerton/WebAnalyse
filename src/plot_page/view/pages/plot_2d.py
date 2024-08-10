@@ -6,7 +6,9 @@ from dash import Input, Output, State, dash_table, dcc, html
 from dash.dependencies import Input, Output
 
 from plot_page.app import app
+from plot_page.control.base_functions import dictionary_values_to_string
 from plot_page.control.data_operations import check_line_config, filter_columns
+from plot_page.control.gui_update import add_plot_data, create_plot, grouping_options
 from plot_page.control.plot_functions import plot_data
 from plot_page.view.components import get_upload_component
 
@@ -78,117 +80,13 @@ def layout() -> html.Div:
     return html.Div(
         [
             dcc.Store(id="selected_table_data", storage_type="session"),
-            dcc.Store(id="plot_config_table", storage_type="memory"),
+            dcc.Store(id="plot_data_2d", storage_type="memory"),
             graph_setting(),
             plot_config(),
             html.Div(children=[], id="2d_plot_chart", style={"padding": "20px"}),
         ],
         style={"padding": "20px"},
     )
-
-
-#####################################################################################################################################################
-@app.callback(
-    Output("2d_plot_chart", "children"),
-    Input("plot_config_table", "data"),
-    State("x_axis", "value"),
-    State("y_axis", "value"),
-    State("selected_table_data", "data"),
-    State("multi_plots", "value"),
-)
-def create_plot(plot_config_table: list[dict], x_axis: str, y_axis: str, data_table: dict, use_multi_plot: list[bool]) -> list:
-    """Create Plot of the selected table and configuration.
-
-    Args:
-        plot_config_table (list[dict]): The current cofig table.
-        x_axis (str): The selected attribute for the x_axis.
-        y_axis (str): The selected attribute for the y_axis.
-        data_table (dict): All selected table data.
-        use_multi_plot (list[bool]): True if multiple plots should be created.
-
-    Returns:
-        list: List of dcc.Graphs that should be plotted.
-    """
-    if plot_config_table is None or x_axis is None or y_axis is None or data_table is None:
-        return dash.no_update
-
-    data_to_plot = [{key: val} for key, val in data_table.items()] if use_multi_plot == [] else [data_table]
-    res = [plot_data(data, plot_config_table["settings"], x_axis, y_axis) for data in data_to_plot]
-    return res
-
-
-#####################################################################################################################################################
-@app.callback(
-    Output("plot_config_table", "data", allow_duplicate=True),
-    Output("plot_type", "value"),
-    Output("value_to_plot", "value"),
-    Output("group_by", "value"),
-    Input("add_plot_config", "n_clicks"),
-    State("plot_type", "value"),
-    State("value_to_plot", "value"),
-    State("group_by", "value"),
-    Input("plot_config_table", "data"),
-    prevent_initial_call=True,
-)
-def update_plot_config(n_clicks: int, plot_type: str, value_to_plot: str, group_by: list[str], current_config: dict) -> dict:
-    """Update the plot config.
-
-    Args:
-        n_clicks (int): Click event.
-        plot_type (str): The type that should be plotted.
-        value_to_plot (str): Value that should be plotted.
-        group_by (list[str]): Group plot data by this attribute.
-        current_config (dict): The current config.
-
-    Returns:
-        dict: The updated config.
-    """
-    if n_clicks is None:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-
-    if current_config is None:
-        current_config = {"settings": []}
-
-    reset = False
-    line_config = check_line_config(plot_type, value_to_plot, group_by)
-    if line_config is not None:
-        current_config["settings"].append(line_config)
-        reset = True
-
-    input_val = None if reset else dash.no_update
-    return current_config, input_val, input_val, input_val
-
-
-#####################################################################################################################################################
-@app.callback(Output("plot_config_table", "data", allow_duplicate=True), Input("select_2d_table", "value"), prevent_initial_call=True)
-def reset_table(current_table: dict) -> dict:
-    """Reset the table.
-
-    Args:
-        current_table (dict): Data of the current table.
-
-    Returns:
-        dict: The initial config_table data.
-    """
-    if current_table is not None:
-        return dash.no_update
-    return {"settings": []}
-
-
-#####################################################################################################################################################
-@app.callback(Output("plot_settings", "data"), Input("plot_config_table", "data"))
-def update_plot_settings(plot_config_table: dict) -> list:
-    """Update the plot settings table.
-
-    Args:
-        plot_config_table (dict): The current added config.
-
-    Returns:
-        list: List of dictionary that contains the configuration.
-    """
-    if plot_config_table is None or len(plot_config_table.get("settings", [])) < 1:
-        return []
-    return [{key: str(val) for key, val in dataset.items()} for dataset in plot_config_table["settings"]]
 
 
 #####################################################################################################################################################
@@ -204,6 +102,96 @@ def update_attributes(selected_data: dict[str, list[dict]]) -> list[str]:
     """
     columns = filter_columns(selected_data)
     return columns, columns
+
+
+#####################################################################################################################################################
+@app.callback(
+    Output("2d_plot_chart", "children"),
+    Input("plot_data_2d", "data"),
+    State("x_axis", "value"),
+    State("y_axis", "value"),
+    State("selected_table_data", "data"),
+    State("multi_plots", "value"),
+)
+def gui_create_plot(plot_data_2d: list[dict], x_axis: str, y_axis: str, selected_tables: dict, use_multi_plot: list[bool]) -> list:
+    """Create Plot of the selected table and configuration.
+
+    Args:
+        plot_data_2d (list[dict]): The current cofig table.
+        x_axis (str): The selected attribute for the x_axis.
+        y_axis (str): The selected attribute for the y_axis.
+        selected_tables (dict): All selected table data.
+        use_multi_plot (list[bool]): True if multiple plots should be created.
+
+    Returns:
+        list: List of dcc.Graphs that should be plotted.
+    """
+    res = create_plot(plot_data_2d, x_axis, y_axis, selected_tables, use_multi_plot)
+    return dash.no_update if res is None else res
+
+
+#####################################################################################################################################################
+@app.callback(
+    Output("plot_data_2d", "data", allow_duplicate=True),
+    Output("plot_type", "value"),
+    Output("value_to_plot", "value"),
+    Output("group_by", "value"),
+    Input("add_plot_config", "n_clicks"),
+    State("plot_type", "value"),
+    State("value_to_plot", "value"),
+    State("group_by", "value"),
+    Input("plot_data_2d", "data"),
+    prevent_initial_call=True,
+)
+def update_plot_config(n_clicks: int, plot_type: str, value_to_plot: str, group_by: list[str], current_config: dict) -> dict:
+    """Update the plot config.
+
+    Args:
+        n_clicks (int): Click event.
+        plot_type (str): The type that should be plotted.
+        value_to_plot (str): Value that should be plotted.
+        group_by (list[str]): Group plot data by this attribute.
+        current_config (dict): The current config.
+
+    Returns:
+        dict: The updated config.
+    """
+    res = add_plot_data(n_clicks, plot_type, value_to_plot, group_by, current_config)
+    if res is None:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+    return res, None, None, None
+
+
+#####################################################################################################################################################
+@app.callback(Output("plot_data_2d", "data", allow_duplicate=True), Input("select_2d_table", "value"), prevent_initial_call=True)
+def reset_table(current_table: dict) -> dict:
+    """Reset the table.
+
+    Args:
+        current_table (dict): Data of the current table.
+
+    Returns:
+        dict: The initial config_table data.
+    """
+    if current_table is not None:
+        return dash.no_update
+    return {"settings": []}
+
+
+#####################################################################################################################################################
+@app.callback(Output("plot_settings", "data"), Input("plot_data_2d", "data"))
+def update_plot_settings(plot_data_2d: dict) -> list:
+    """Update the plot settings table.
+
+    Args:
+        plot_data_2d (dict): The current added config.
+
+    Returns:
+        list: List of dictionary that contains the configuration.
+    """
+    if plot_data_2d is None or len(plot_data_2d.get("settings", [])) < 1:
+        return []
+    return dictionary_values_to_string(plot_data_2d["settings"])
 
 
 #####################################################################################################################################################
@@ -254,11 +242,7 @@ def update_group_options(value_to_plot: str, attributes: list[str]) -> list[str]
     Returns:
         list[str]: List of attributes the dataset can be grouped by.
     """
-    if value_to_plot is None:
-        return []
-    if value_to_plot in ["History", "Min", "Max", "Median", "Mean"]:
-        return attributes
-    return []
+    return grouping_options(value_to_plot, attributes)
 
 
 #####################################################################################################################################################
@@ -272,15 +256,13 @@ def update_selectable_data(table_data: dict[str, list[dict]]) -> list[str]:
     Returns:
         list[str]: List of dataset keys.
     """
-    if table_data is None:
-        return []
-    return list(table_data)
+    return [] if table_data is None else list(table_data)
 
 
 #####################################################################################################################################################
-@app.callback(Output("plot_config_table", "data"), Input("select_2d_table", "value"))
+@app.callback(Output("plot_data_2d", "data"), Input("select_2d_table", "value"))
 def reset_config_table(data: dict) -> dict:
-    """Reset the plot_config_table.
+    """Reset the plot_data_2d.
 
     Args:
         data (dict): The updated select_2d_table.
