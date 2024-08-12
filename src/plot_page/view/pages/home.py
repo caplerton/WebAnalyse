@@ -1,11 +1,14 @@
 """Functions to visualise the home page."""
 
+import os
 import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, State, dash_table, dcc, html
+import pandas as pd
 
 from plot_page.app import app
 from plot_page.control.data_operations import add_dataset
+from plot_page.data.global_variables import DATAFRAME_STORE
 from plot_page.view.components import get_upload_component
 
 
@@ -109,7 +112,7 @@ def add_filtered_data(n_clicks: int, table_data: dict, add_data: list[dict], nam
     return add_dataset(table_data, add_data, name_dataset)
 
 
-#####################################################################################################################################################
+####################################################################################################################################################
 @app.callback(Output("table_select", "options"), Input("table_data", "data"))
 def table_options(table_data: dict[str, list[dict]]) -> list[str]:
     """Update available data options.
@@ -127,123 +130,92 @@ def table_options(table_data: dict[str, list[dict]]) -> list[str]:
 
 #####################################################################################################################################################
 @app.callback(
-    Output("current_filter", "data", allow_duplicate=True),
+    Output("plot_table", "data", allow_duplicate=True),
+    Output("attribute_select", "options"),
     Input("table_select", "value"),
-    State("table_data", "data"),
     prevent_initial_call="initial_duplicate",
 )
-def table_select(selected_table: str, table_data: dict[str, list]) -> list[dict]:
+def table_select(selected_table: str) -> tuple[list[dict], list[str]]:
     """Updated selected table.
 
     Args:
         selected_table (str): The current key of the selcted table.
-        table_data (dict[str, list]): Dictionary that contains keys and dataset.
 
     Returns:
-        list[dict]: Value of the selected table.
+        tuple[list[dict], list[str]]: Value of the selected table and possible attributes to filter.
     """
-    if selected_table is None or table_data is None:
-        return dash.no_update
-    return table_data.get(selected_table, [])
+    if selected_table is None:
+        return dash.no_update, []
+    current_dataframe = pd.read_pickle(os.path.join(DATAFRAME_STORE, f"{selected_table}.pkl"))
+    records = current_dataframe.to_dict("records")
+    return records, list(records[0])
 
 
-#####################################################################################################################################################
-@app.callback(Output("attribute_select", "options"), Input("current_filter", "data"))
-def attribute_select(current_table: list[dict]) -> list[str]:
-    """Update selectable attributes for filter configuration.
+# #####################################################################################################################################################
+# @app.callback(
+#     Output("current_filter", "data", allow_duplicate=True),
+#     Input("add_filter", "n_clicks"),
+#     State("attribute_select", "value"),
+#     State("filter_drop", "value"),
+#     State("value_input", "value"),
+#     State("current_filter", "data"),
+#     prevent_initial_call="initial_duplicate",
+# )
+# def filter_table(n_clicks: int, selected_attribute: str, filter_operation: str, filter_value: str, table_data: dict) -> dict:
+#     """Use filter for this table.
 
-    Args:
-        current_table (list[dict]): The current table_data.
+#     Args:
+#         n_clicks (int): Click event.
+#         selected_attribute (str): Selected attribute to filter data.
+#         filter_operation (str): Selected operation to filter data.
+#         filter_value (str): Use this value as reference.
+#         table_data (dict): The current table data.
 
-    Returns:
-        list[str]: List of all attributes.
-    """
-    if current_table is None:
-        return dash.no_update
-    return list(current_table[0])
+#     Returns:
+#         dict: The updated table data.
+#     """
+#     if any(input_data is None for input_data in [n_clicks, filter_operation, selected_attribute, filter_value, table_data]):
+#         return dash.no_update
 
-
-#####################################################################################################################################################
-@app.callback(Output("plot_table", "data"), Input("current_filter", "data"))
-def update_table(table_data: list[dict]) -> list[dict]:
-    """Update the visualised table.
-
-    Args:
-        table_data (list[dict]): The current table data.
-
-    Returns:
-        list[dict]: List of all keys.
-    """
-    if table_data is None:
-        return dash.no_update
-    return table_data
-
-
-#####################################################################################################################################################
-@app.callback(
-    Output("current_filter", "data", allow_duplicate=True),
-    Input("add_filter", "n_clicks"),
-    State("attribute_select", "value"),
-    State("filter_drop", "value"),
-    State("value_input", "value"),
-    State("current_filter", "data"),
-    prevent_initial_call="initial_duplicate",
-)
-def filter_table(n_clicks: int, selected_attribute: str, filter_operation: str, filter_value: str, table_data: dict) -> dict:
-    """Use filter for this table.
-
-    Args:
-        n_clicks (int): Click event.
-        selected_attribute (str): Selected attribute to filter data.
-        filter_operation (str): Selected operation to filter data.
-        filter_value (str): Use this value as reference.
-        table_data (dict): The current table data.
-
-    Returns:
-        dict: The updated table data.
-    """
-    if any(input_data is None for input_data in [n_clicks, filter_operation, selected_attribute, filter_value, table_data]):
-        return dash.no_update
-
-    try:
-        if filter_operation == "<=":
-            return [val for val in table_data if val.get(selected_attribute, None) <= float(filter_value)]
-        if filter_operation == "<":
-            return [val for val in table_data if val.get(selected_attribute, None) < float(filter_value)]
-        if filter_operation == ">":
-            return [val for val in table_data if val.get(selected_attribute, None) > float(filter_value)]
-        if filter_operation == ">=":
-            return [val for val in table_data if val.get(selected_attribute, None) >= float(filter_value)]
-        if filter_operation == "=":
-            return [val for val in table_data if str(val.get(selected_attribute, None)) == filter_value]
-        if filter_operation == "!=":
-            return [val for val in table_data if str(val.get(selected_attribute, None)) != filter_value]
-    except Exception:
-        pass
-    return table_data
+#     try:
+#         if filter_operation == "<=":
+#             return [val for val in table_data if val.get(selected_attribute, None) <= float(filter_value)]
+#         if filter_operation == "<":
+#             return [val for val in table_data if val.get(selected_attribute, None) < float(filter_value)]
+#         if filter_operation == ">":
+#             return [val for val in table_data if val.get(selected_attribute, None) > float(filter_value)]
+#         if filter_operation == ">=":
+#             return [val for val in table_data if val.get(selected_attribute, None) >= float(filter_value)]
+#         if filter_operation == "=":
+#             return [val for val in table_data if str(val.get(selected_attribute, None)) == filter_value]
+#         if filter_operation == "!=":
+#             return [val for val in table_data if str(val.get(selected_attribute, None)) != filter_value]
+#     except Exception:
+#         pass
+#     return table_data
 
 
-#####################################################################################################################################################
-@app.callback(
-    Output("table_data", "data"),
-    Input("save_dataset", "n_clicks"),
-    State("save_name", "value"),
-    State("table_data", "data"),
-    State("current_filter", "data"),
-)
-def save_filtered_data(click_event: int, save_name: str, table_data: dict[str, list[dict]], current_data: list[dict]) -> dict[str, list[dict]]:
-    """Store current displayed data in the dictionary.
+# #####################################################################################################################################################
+# @app.callback(
+#     Output("table_data", "data"),
+#     Input("save_dataset", "n_clicks"),
+#     State("save_name", "value"),
+#     State("table_data", "data"),
+#     State("current_filter", "data"),
+# )
+# def save_filtered_data(click_event: int, save_name: str, table_data: dict[str, list[dict]], current_data: list[dict]) -> dict[str, list[dict]]:
+#     """Store current displayed data in the dictionary.
 
-    Args:
-        click_event (int): Click event.
-        save_name (str): Name of the current visualised dataset in table_data.
-        table_data (dict[str, list[dict]]): The current table_data that holds all tables.
-        current_data (list[dict]): The current visualised dataset.
+#     Args:
+#         click_event (int): Click event.
+#         save_name (str): Name of the current visualised dataset in table_data.
+#         table_data (dict[str, list[dict]]): The current table_data that holds all tables.
+#         current_data (list[dict]): The current visualised dataset.
 
-    Returns:
-        dict[str, list[dict]]: The updated table_data.
-    """
-    if any(input_data is None for input_data in [click_event, save_name, current_data, table_data]):
-        return dash.no_update
-    table_data[save_name] = current_data
-    return table_data
+#     Returns:
+#         dict[str, list[dict]]: The updated table_data.
+#     """
+#     if any(input_data is None for input_data in [click_event, save_name, current_data, table_data]):
+#         return dash.no_update
+#     table_data[save_name] = current_data
+#     return table_data

@@ -48,8 +48,4 @@ def upload_data(contents: str, filenames: str, table_data: None | dict[str, dict
         filenames (str): Name of the uploaded file.
         table_data (None | dict[str, dict]): The current stored data.
     """
-    if contents is None or filenames is None:
-        return dash.no_update
-    for uploaded_data in zip(filenames, contents):
-        table_data = prepare_upload_data(uploaded_data, table_data)
-    return table_data
+    return prepare_upload_data(contents, filenames, table_data)

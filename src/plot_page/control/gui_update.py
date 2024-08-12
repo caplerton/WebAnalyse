@@ -1,7 +1,11 @@
+import os
 from typing import Any
 
 from plot_page.control.data_operations import check_line_config
 from plot_page.control.plot_functions import plot_data
+import pandas as pd
+
+from plot_page.data.global_variables import DATAFRAME_STORE
 
 
 def add_plot_data(click_event: int, plot_type: str, val_type: str, group_attributes: list[str], selected_values: dict[str, Any]) -> dict[str, Any]:
@@ -21,6 +25,8 @@ def add_plot_data(click_event: int, plot_type: str, val_type: str, group_attribu
         return None
     if plot_type is None:
         return None
+    if selected_values is None:
+        selected_values = {}
 
     line_config = check_line_config(plot_type, val_type, group_attributes)
     if line_config is not None:
@@ -42,15 +48,15 @@ def create_plot(plot_data_2d: list[dict], x_axis: str, y_axis: str, selected_tab
     Returns:
         list: List of dcc.Graphs that should be plotted.
     """
-    if plot_data_2d is None or plot_data_2d == []:
+    if "plot_data" not in plot_data_2d:
         return None
     if selected_tables is None:
         return None
     if x_axis is None or y_axis is None:
         return None
 
-    data_to_plot = [{key: val} for key, val in selected_tables.items()] if use_multi_plot == [] else [selected_tables]
-    return [plot_data(data, plot_data_2d, x_axis, y_axis) for data in data_to_plot]
+    data_to_plot = [{key: pd.read_pickle(os.path.join(DATAFRAME_STORE, f"{key}.pkl")) for key in selected_tables}]
+    return [plot_data(data, plot_data_2d["plot_data"], x_axis, y_axis) for data in data_to_plot]
 
 
 def grouping_options(value_type: str, attributes: list[str]) -> list[str]:

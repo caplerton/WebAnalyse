@@ -2,8 +2,12 @@
 
 import base64
 import json
+import os
+from typing import Any
 
 import pandas as pd
+
+from plot_page.data.global_variables import DATAFRAME_STORE
 
 
 #####################################################################################################################################################
@@ -26,6 +30,18 @@ def filter_columns(selected_data: dict[str, list[dict]]) -> list[str]:
     return list(set(possible_keys[0]).intersection(*possible_keys[1:]))
 
 
+def get_intersections_dict(selected_tables: list[str], table_data: dict) -> list[str]:
+    if selected_tables is None or selected_tables == []:
+        return []
+    if not all(filename in table_data for filename in selected_tables):
+        return []
+
+    possible_keys = [table_data[filename] for filename in selected_tables]
+    if len(possible_keys) == 1:
+        return possible_keys[0]
+    return list(set(possible_keys[0]).intersection(*possible_keys[1:]))
+
+
 #####################################################################################################################################################
 def add_dataset(table_data: dict, add_data: list[dict], name_dataset: str) -> dict:
     """Add a new dataset.
@@ -42,7 +58,9 @@ def add_dataset(table_data: dict, add_data: list[dict], name_dataset: str) -> di
         return None
     if table_data is None:
         table_data = {}
-    table_data[name_dataset] = add_data
+    current_dataframe = pd.DataFrame.from_dict(add_data)
+    current_dataframe.to_pickle(DATAFRAME_STORE, f"{name_dataset}.pkl")
+    table_data[name_dataset] = list(current_dataframe.columns)
     return table_data
 
 
@@ -93,8 +111,19 @@ def prepare_json(contents: str) -> dict[str, list[dict]]:
     return {key: val for key, val in json.loads(decoded).items() if val and isinstance(val, list) and isinstance(val[0], dict)}
 
 
+def flatten_dictionary(current_dictionary: dict[str, Any], parent_key: str = None) -> dict[str, Any]:
+    res = {}
+    for key, val in current_dictionary.items():
+        new_key = f"{parent_key}_key" if parent_key is not None else key
+        if isinstance(val, dict):
+            res = res | flatten_dictionary(val, new_key)
+        else:
+            res[new_key] = val
+    return res
+
+
 #####################################################################################################################################################
-def prepare_upload_data(uploaded_data: tuple[str, str], store_data: None | dict[str, dict]) -> dict[str, dict]:
+def prepare_upload_data(contents: list[str], filenames: list[str], store_data: None | dict[str, dict]) -> dict[str, dict]:
     """Prepare uploaded data and return it as dict.
 
     Args:
@@ -105,11 +134,23 @@ def prepare_upload_data(uploaded_data: tuple[str, str], store_data: None | dict[
     Returns:
         dict[str, dict]: The new data to store.
     """
+
     if store_data is None:
         store_data = {}
+    if contents is None or filenames is None:
+        return store_data
 
-    if uploaded_data[0].endswith(".json"):
-        store_data.update(prepare_json(uploaded_data[1]))
+    new_data: dict[str, pd.DataFrame] = {}
+    for uploaded_data in zip(filenames, contents):
+        if uploaded_data[0].endswith(".json"):
+            json_data = prepare_json(uploaded_data[1])
+            if all(isinstance(values, list) for values in json_data.values()):
+                for key, val in json_data.items():
+                    new_data[key] = pd.DataFrame.from_dict([flatten_dictionary(v) for v in val])
+
+    for key, val in new_data.items():
+        val.to_pickle(os.path.join(DATAFRAME_STORE, f"{key}.pkl"))
+        store_data[key] = list(val.columns)
 
     return store_data
 
@@ -140,8 +181,8 @@ def split_data(data: dict, grouping: list[str]) -> dict:
     Returns:
         dict: The resulting splitted dataset.
     """
-    res = {key: pd.DataFrame.from_dict(val) for key, val in data.items()}
-
+    # res = {key: pd.DataFrame.from_dict(val) for key, val in data.items()}
+    res = data
     if grouping is None:
         return res
 
