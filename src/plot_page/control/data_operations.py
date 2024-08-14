@@ -135,8 +135,6 @@ def prepare_upload_data(contents: list[str], filenames: list[str], store_data: N
         dict[str, dict]: The new data to store.
     """
 
-    if store_data is None:
-        store_data = {}
     if contents is None or filenames is None:
         return store_data
 

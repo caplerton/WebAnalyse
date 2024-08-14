@@ -2,7 +2,6 @@
 
 import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html
-from dash.dependencies import Input, Output  # noqa: F811
 import os
 import pandas as pd
 from plot_page.data.global_variables import DATAFRAME_STORE
@@ -41,6 +40,7 @@ def page_layout() -> html.Div:
         [
             dcc.Location(id="url", refresh=False),
             dcc.Store(id="table_data", data=existing_data, storage_type="session"),
+            dcc.Store(id="new_table_data", storage_type="session"),
             get_topbar(),
             html.Div(id="page-content"),
         ]

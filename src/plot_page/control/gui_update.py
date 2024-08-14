@@ -35,28 +35,27 @@ def add_plot_data(click_event: int, plot_type: str, val_type: str, group_attribu
     return None
 
 
-def create_plot(plot_data_2d: list[dict], x_axis: str, y_axis: str, selected_tables: dict, use_multi_plot: list[bool]) -> list:
-    """Create Plot of the selected table and configuration.
+def create_plot(
+    plot_settings: list[dict],
+    title: str | None,
+    selected_tables: list[str],
+    x_axis: str | None,
+    y_axis: str | None,
+    graph_type: str | None,
+) -> list:
+    if graph_type is None:
+        return []
+    if len(plot_settings) < 1:
+        return []
+    if title is None or x_axis is None or y_axis is None:
+        return []
 
-    Args:
-        plot_data_2d (list[dict]): The current cofig table.
-        x_axis (str): The selected attribute for the x_axis.
-        y_axis (str): The selected attribute for the y_axis.
-        selected_tables (dict): All selected table data.
-        use_multi_plot (list[bool]): True if multiple plots should be created.
-
-    Returns:
-        list: List of dcc.Graphs that should be plotted.
-    """
-    if "plot_data" not in plot_data_2d:
-        return None
-    if selected_tables is None:
-        return None
-    if x_axis is None or y_axis is None:
-        return None
-
-    data_to_plot = [{key: pd.read_pickle(os.path.join(DATAFRAME_STORE, f"{key}.pkl")) for key in selected_tables}]
-    return [plot_data(data, plot_data_2d["plot_data"], x_axis, y_axis) for data in data_to_plot]
+    data_to_plot = (
+        [{key: pd.read_pickle(os.path.join(DATAFRAME_STORE, f"{key}.pkl")) for key in selected_tables}]
+        if graph_type == "Combined Graphs"
+        else [{key: pd.read_pickle(os.path.join(DATAFRAME_STORE, f"{key}.pkl"))} for key in selected_tables]
+    )
+    return [plot_data(data, plot_settings, title, x_axis, y_axis) for data in data_to_plot]
 
 
 def grouping_options(value_type: str, attributes: list[str]) -> list[str]:

@@ -8,6 +8,7 @@ import pandas as pd
 
 from plot_page.app import app
 from plot_page.control.data_operations import add_dataset
+from plot_page.control.table_operations import query_table
 from plot_page.data.global_variables import DATAFRAME_STORE
 from plot_page.view.components import get_upload_component
 
@@ -30,6 +31,20 @@ def explanation_card() -> html.Div:
     )
 
 
+def create_query_components() -> html.Div:
+    return html.Div(
+        dbc.Row(
+            [
+                dbc.Col(dbc.Input(placeholder="Add Query (e.g. age < 20 )", type="text", id="upload_query_input"), width=4),
+                dbc.Col(dbc.Button("add query", id="upload_query_add_button", style={"width": "100%"}), width=2),
+                dbc.Col(dbc.Button("reset queries", id="upload_query_remove_button", style={"width": "100%"}), width=2),
+                dbc.Col(html.Div(children=[], id="upload_query_output"), width=4),
+            ]
+        ),
+        style={"padding": "20px"},
+    )
+
+
 #####################################################################################################################################################
 def create_table_card() -> dbc.Card:
     """Create a card that allows to visualise the uploaded data.
@@ -41,25 +56,20 @@ def create_table_card() -> dbc.Card:
         [
             html.H2("Table", style={"text-align": "center"}),
             html.Div(
-                dcc.Dropdown(options=["None"], id="table_select"),
-                style={"padding": "20px"},
-            ),
-            html.Div(
-                dbc.Row(
+                children=dbc.Row(
                     [
-                        dbc.Col(dcc.Dropdown(options=["None"], id="attribute_select"), width=3),
-                        dbc.Col(dcc.Dropdown([">=", ">", "<", "<=", "=", "!="], id="filter_drop"), width=3),
-                        dbc.Col(dbc.Input(placeholder="Value...", type="text", id="value_input"), width=3),
-                        dbc.Col(dbc.Button("use filter", id="add_filter"), width=1),
+                        dbc.Col(dcc.Dropdown(options=["None"], id="upload_selected_table"), width=9),
+                        dbc.Col(dbc.Button("Remove Table", id="upload_remove_table", style={"width": "100%"}), width=3),
                     ]
                 ),
                 style={"padding": "20px"},
             ),
+            create_query_components(),
             html.Div(
                 dbc.Row(
                     [
-                        dbc.Col(dbc.Input(placeholder="Save filtered dataset as", type="text", id="save_name"), width=3),
-                        dbc.Col(dbc.Button("Save dataset", id="save_dataset"), width=2),
+                        dbc.Col(dbc.Input(placeholder="Save filtered dataset as", type="text", id="upload_save_name"), width=3),
+                        dbc.Col(dbc.Button("Save dataset", id="upload_save_dataset"), width=2),
                     ]
                 ),
                 style={"padding": "20px"},
@@ -67,6 +77,24 @@ def create_table_card() -> dbc.Card:
             dash_table.DataTable(data=[], id="plot_table", page_size=20, export_format="csv"),
         ]
     )
+
+
+@app.callback(
+    Output("table_data", "data", allow_duplicate=True),
+    Input("upload_remove_table", "n_clicks"),
+    State("upload_selected_table", "value"),
+    State("table_data", "data"),
+    prevent_initial_call=True,
+)
+def upload_remove_selected_table(n_clicks: int, selected_table: str | None, table_data: dict[str, list]) -> dict[str, list]:
+    if n_clicks is None or selected_table is None:
+        return dash.no_update
+    file_path = os.path.join(DATAFRAME_STORE, f"{selected_table}.pkl")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    if selected_table in table_data:
+        table_data.pop(selected_table)
+    return table_data
 
 
 #####################################################################################################################################################
@@ -78,6 +106,7 @@ def layout() -> html.Div:
     """
     return html.Div(
         [
+            dcc.Store(id="upload_query_list", data=[]),
             dcc.Store(id="current_filter"),
             html.H1("Analyse Page", style={"text-align": "center"}),
             html.Div(explanation_card(), style={"padding": "20px"}),
@@ -86,35 +115,68 @@ def layout() -> html.Div:
     )
 
 
-#####################################################################################################################################################
 @app.callback(
-    Output("table_data", "data", allow_duplicate=True),
-    Input("use_dataset", "n_clicks"),
+    Output("table_data", "data"),
+    Output("upload_save_name", "value"),
+    Input("upload_save_dataset", "n_clicks"),
+    State("upload_selected_table", "value"),
+    State("upload_save_name", "value"),
+    State("upload_query_list", "data"),
     State("table_data", "data"),
-    State("current_filter", "data"),
-    State("input_name", "value"),
-    prevent_initial_call=True,
 )
-def add_filtered_data(n_clicks: int, table_data: dict, add_data: list[dict], name_dataset: str) -> dict:
-    """Add a new dataset.
-
-    Args:
-        n_clicks (int): Check if it is a click event.
-        table_data (dict): Dictionary of key and dataset.
-        add_data (list[dict]): The value that should be added.
-        name_dataset (str): Name of the dataset.
-
-    Returns:
-        dict: Updated dictionary.
-    """
+def upload_save_filtered_dataset(
+    n_clicks: int | None, selected_table: str | None, table_name: str | None, query_list: list[str], table_data: dict[str, list]
+) -> dict[str, list]:
     if n_clicks is None:
+        return dash.no_update, dash.no_update
+    if selected_table is None:
+        return dash.no_update, dash.no_update
+    if table_name is None or len(table_name) < 1:
+        return dash.no_update, dash.no_update
+
+    res_dataframe = query_table(selected_table, query_list)
+    pd.to_pickle(res_dataframe, os.path.join(DATAFRAME_STORE, f"{table_name}.pkl"))
+    table_data[table_name] = list(res_dataframe.columns)
+    return table_data, ""
+
+
+@app.callback(Output("plot_table", "data"), Input("upload_selected_table", "value"), Input("upload_query_list", "data"))
+def upload_update_plot(selected_table: str | None, query_list: list[str]) -> list[dict]:
+    if selected_table is None:
         return dash.no_update
-    return add_dataset(table_data, add_data, name_dataset)
+    res_dataframe = query_table(selected_table, query_list)
+    return res_dataframe.to_dict("records")
+
+
+@app.callback(
+    Output("upload_query_list", "data"),
+    Output("upload_query_input", "value"),
+    Input("upload_query_remove_button", "n_clicks"),
+    Input("upload_query_add_button", "n_clicks"),
+    State("upload_query_input", "value"),
+    State("upload_query_list", "data"),
+)
+def upload_update_query_list(
+    remove_click: int | None, add_click: int | None, new_query: str | None, current_queries: list[str]
+) -> tuple[list[str], str]:
+    if remove_click is not None:
+        return [], ""
+
+    if add_click is None or new_query is None or len(new_query) < 3:
+        return dash.no_update, dash.no_update
+    return [new_query] + current_queries, ""
+
+
+@app.callback(Output("upload_query_output", "children"), Input("upload_query_list", "data"))
+def upload_update_query_output(query_list: list[str] | None) -> html.P:
+    if query_list is None:
+        return dash.no_update
+    return [html.P(", ".join(query_list))]
 
 
 ####################################################################################################################################################
-@app.callback(Output("table_select", "options"), Input("table_data", "data"))
-def table_options(table_data: dict[str, list[dict]]) -> list[str]:
+@app.callback(Output("upload_selected_table", "options"), Input("table_data", "data"))
+def upload_table_selction_options(table_data: dict[str, list[dict]] | None) -> list[str]:
     """Update available data options.
 
     Args:
@@ -126,96 +188,3 @@ def table_options(table_data: dict[str, list[dict]]) -> list[str]:
     if table_data is None:
         return dash.no_update
     return list(table_data)
-
-
-#####################################################################################################################################################
-@app.callback(
-    Output("plot_table", "data", allow_duplicate=True),
-    Output("attribute_select", "options"),
-    Input("table_select", "value"),
-    prevent_initial_call="initial_duplicate",
-)
-def table_select(selected_table: str) -> tuple[list[dict], list[str]]:
-    """Updated selected table.
-
-    Args:
-        selected_table (str): The current key of the selcted table.
-
-    Returns:
-        tuple[list[dict], list[str]]: Value of the selected table and possible attributes to filter.
-    """
-    if selected_table is None:
-        return dash.no_update, []
-    current_dataframe = pd.read_pickle(os.path.join(DATAFRAME_STORE, f"{selected_table}.pkl"))
-    records = current_dataframe.to_dict("records")
-    return records, list(records[0])
-
-
-# #####################################################################################################################################################
-# @app.callback(
-#     Output("current_filter", "data", allow_duplicate=True),
-#     Input("add_filter", "n_clicks"),
-#     State("attribute_select", "value"),
-#     State("filter_drop", "value"),
-#     State("value_input", "value"),
-#     State("current_filter", "data"),
-#     prevent_initial_call="initial_duplicate",
-# )
-# def filter_table(n_clicks: int, selected_attribute: str, filter_operation: str, filter_value: str, table_data: dict) -> dict:
-#     """Use filter for this table.
-
-#     Args:
-#         n_clicks (int): Click event.
-#         selected_attribute (str): Selected attribute to filter data.
-#         filter_operation (str): Selected operation to filter data.
-#         filter_value (str): Use this value as reference.
-#         table_data (dict): The current table data.
-
-#     Returns:
-#         dict: The updated table data.
-#     """
-#     if any(input_data is None for input_data in [n_clicks, filter_operation, selected_attribute, filter_value, table_data]):
-#         return dash.no_update
-
-#     try:
-#         if filter_operation == "<=":
-#             return [val for val in table_data if val.get(selected_attribute, None) <= float(filter_value)]
-#         if filter_operation == "<":
-#             return [val for val in table_data if val.get(selected_attribute, None) < float(filter_value)]
-#         if filter_operation == ">":
-#             return [val for val in table_data if val.get(selected_attribute, None) > float(filter_value)]
-#         if filter_operation == ">=":
-#             return [val for val in table_data if val.get(selected_attribute, None) >= float(filter_value)]
-#         if filter_operation == "=":
-#             return [val for val in table_data if str(val.get(selected_attribute, None)) == filter_value]
-#         if filter_operation == "!=":
-#             return [val for val in table_data if str(val.get(selected_attribute, None)) != filter_value]
-#     except Exception:
-#         pass
-#     return table_data
-
-
-# #####################################################################################################################################################
-# @app.callback(
-#     Output("table_data", "data"),
-#     Input("save_dataset", "n_clicks"),
-#     State("save_name", "value"),
-#     State("table_data", "data"),
-#     State("current_filter", "data"),
-# )
-# def save_filtered_data(click_event: int, save_name: str, table_data: dict[str, list[dict]], current_data: list[dict]) -> dict[str, list[dict]]:
-#     """Store current displayed data in the dictionary.
-
-#     Args:
-#         click_event (int): Click event.
-#         save_name (str): Name of the current visualised dataset in table_data.
-#         table_data (dict[str, list[dict]]): The current table_data that holds all tables.
-#         current_data (list[dict]): The current visualised dataset.
-
-#     Returns:
-#         dict[str, list[dict]]: The updated table_data.
-#     """
-#     if any(input_data is None for input_data in [click_event, save_name, current_data, table_data]):
-#         return dash.no_update
-#     table_data[save_name] = current_data
-#     return table_data

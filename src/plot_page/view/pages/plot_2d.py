@@ -22,27 +22,84 @@ def graph_setting() -> dbc.Card:
     """
     return dbc.Card(
         [
-            html.H1("Graph setting", style={"textAlign": "center"}),
+            html.H1("DATA SELECTION", style={"textAlign": "center"}),
             get_upload_component(),
-            html.Div(dcc.Dropdown([], value=[], id="select_2d_table", multi=True, clearable=True), style={"padding": "10px"}),
+            html.Div(dcc.Dropdown([], value=[], id="plot2_select_table", multi=True, clearable=True), style={"padding": "10px"}),
+        ]
+    )
+
+
+@app.callback(
+    Output("plot2_graph_xaxis", "options"),
+    Output("plot2_graph_yaxis", "options"),
+    Output("plot2_group_by", "options", allow_duplicate=True),
+    Input("plot2_select_table", "value"),
+    State("table_data", "data"),
+    prevent_initial_call=True,
+)
+def plot2_update_attributes(selected_tables: list[str], table_data: dict[str, list]) -> list[str]:
+    attributes = get_intersections_dict(selected_tables, table_data)
+    return (
+        attributes,
+        attributes,
+        attributes,
+    )
+
+
+@app.callback(
+    Output("plot2_graph_xaxis", "value"),
+    Output("plot2_graph_yaxis", "value"),
+    Output("plot2_group_by", "value"),
+    Output("plot_settings_data", "data", allow_duplicate=True),
+    Input("plot2_select_table", "value"),
+    prevent_initial_call=True,
+)
+def reset_table_settings(selected_tables: list[str]) -> tuple[str | None]:
+    return "", None, None, []
+
+
+def plot2_upload_card() -> dbc.Card:
+    return dbc.Card(
+        [
             html.Div(
                 [
-                    html.H4("Table setting"),
+                    html.H1("Table setting", style={"textAlign": "center"}),
                     dbc.Row(
                         [
-                            dbc.Col(dbc.Label("x-Axis"), width=1),
-                            dbc.Col(dcc.Dropdown([], id="x_axis"), width=2),
-                            dbc.Col(dbc.Label("y-Axis"), width=1),
-                            dbc.Col(dcc.Dropdown([], id="y_axis"), width=2),
-                            dbc.Col(dcc.Checklist(id="multi_plots", options={"disabled": "Plot Per File"}, value=["disabled"]), width=2),
+                            dbc.Col(dbc.Input(placeholder="Enter the name:", id="plot2_graph_headline"), width=2),
+                            dbc.Col(dcc.Dropdown([], placeholder="x-Axis", id="plot2_graph_xaxis"), width=2),
+                            dbc.Col(dcc.Dropdown([], placeholder="y-Axis", id="plot2_graph_yaxis"), width=2),
+                            dbc.Col(dcc.Dropdown(["Single Graphs", "Combined Graphs"], value="Combined Graphs", id="plot2_graph_type"), width=2),
                         ]
                     ),
-                    html.Div(id="2d-setting"),
+                    html.Div(dash_table.DataTable(data=[], id="plot2_plot_graphs", page_size=20), style={"padding": "10px"}),
                 ],
                 style={"padding": "10px"},
             ),
         ]
     )
+
+
+@app.callback(
+    Output("2d_plot_chart", "children"),
+    Input("plot_settings_data", "data"),
+    State("plot2_select_table", "value"),
+    State("plot2_graph_headline", "value"),
+    State("plot2_graph_xaxis", "value"),
+    State("plot2_graph_yaxis", "value"),
+    State("plot2_graph_type", "value"),
+    prevent_initial_call=True,
+)
+def plot_update_graphs(
+    plot_settings: list[dict],
+    title: str | None,
+    selected_tables: list[str],
+    x_axis: str | None,
+    y_axis: str | None,
+    graph_type: str | None,
+) -> list[dcc.Graph]:
+    res = create_plot(plot_settings, selected_tables, title, x_axis, y_axis, graph_type)
+    return dash.no_update if res is None else res
 
 
 #####################################################################################################################################################
@@ -55,22 +112,90 @@ def plot_config() -> dbc.Card:
     return dbc.Card(
         [
             html.H1("Add Plot", style={"textAlign": "center"}),
-            html.Div(dcc.Dropdown(["Line", "Bar"], placeholder="Set Plot Type", id="plot_type"), style={"padding": "10px"}),
-            dbc.Row(
+            html.Div(
                 [
-                    dbc.Col(
-                        html.Div(dcc.Dropdown(["None", "History", "Min", "Max", "Median", "Mean"], id="value_to_plot", style={"padding": "10px"})),
-                        width=3,
+                    dbc.Row(
+                        [
+                            dbc.Col(dcc.Dropdown(["Line", "Bar"], value="Line", placeholder="Plot Type", id="plot2_select_type"), width=2),
+                            dbc.Col(
+                                dcc.Dropdown(
+                                    ["History", "Min", "Max", "Median", "Mean"], value="History", placeholder="Value to plot", id="plot2_value_type"
+                                ),
+                                width=2,
+                            ),
+                            dbc.Col(dcc.Dropdown(placeholder="Group By", options=[], id="plot2_group_by", multi=True), width=2),
+                            dbc.Col(dcc.Dropdown(options=["lines", "lines+markers", "markers"], value="lines", id="plot2_mode_selector"), width=2),
+                            dbc.Col(dbc.Button("Add Plot Config", id="plot_add_plot_config", style={"width": "100%"}), width=2),
+                            dbc.Col(dbc.Button("REFRESH PLOT", id="plot_refresh_plot", style={"width": "100%"}), width=2),
+                        ]
                     ),
-                    dbc.Col(
-                        html.Div(dcc.Dropdown(placeholder="Group By", options=[], id="group_by", multi=True), style={"padding": "10px"}), width=3
+                    dash_table.DataTable(
+                        data=[],
+                        id="plot_settings_table",
+                        page_size=20,
+                        row_deletable=True,
                     ),
-                ]
+                ],
+                style={"padding": "10px"},
             ),
-            html.Div(dbc.Button("Add Plot Config", id="add_plot_config"), style={"padding": "10px"}),
-            html.Div(dash_table.DataTable(data=[], id="plot_settings", page_size=20), style={"padding": "10px"}),
         ]
     )
+
+
+@app.callback(
+    Output("plot_settings_data", "data", allow_duplicate=True),
+    Input("plot_settings_table", "data"),
+    State("plot_settings_data", "data"),
+    prevent_initial_call=True,
+)
+def plot_remove_table_data(shown_table: list[dict], stored_table: list[dict]) -> list[dict]:
+    return [val for val in stored_table if any(str(val["id"]) == val2["id"] for val2 in shown_table)]
+
+
+@app.callback(
+    Output("plot_settings_table", "data"),
+    Output("plot2_select_type", "value"),
+    Output("plot2_value_type", "value"),
+    Output("plot2_group_by", "value", allow_duplicate=True),
+    Output("plot2_mode_selector", "value"),
+    Input("plot_settings_data", "data"),
+    prevent_initial_call=True,
+)
+def plot_reset_plot_type(plot_settings_data: list[str]) -> tuple[str]:
+    return dictionary_values_to_string(plot_settings_data), "Line", "History", None, "lines"
+
+
+@app.callback(
+    Output("plot_settings_data", "data"),
+    Input("plot_add_plot_config", "n_clicks"),
+    State("plot2_select_type", "value"),
+    State("plot2_value_type", "value"),
+    State("plot2_group_by", "value"),
+    State("plot2_mode_selector", "value"),
+    State("plot_settings_data", "data"),
+)
+def plot_add_additional_plot(
+    n_clicks: int | None,
+    plot_type: str | None,
+    value_type: str | None,
+    group_by: list[str],
+    mode_selector: str | None,
+    current_plot_settings: list[dict],
+) -> list[dict]:
+    if n_clicks is None:
+        return dash.no_update
+    if plot_type not in ["Line", "Bar"]:
+        return dash.no_update
+    if not (
+        plot_type == "Line"
+        and value_type in ["History", "Min", "Max", "Median", "Mean"]
+        or plot_type == "Bar"
+        and value_type in ["Min", "Max", "Median", "Mean"]
+    ):
+        return dash.no_update
+    plot_id = 0 if len(current_plot_settings) == 0 else max(v["id"] for v in current_plot_settings) + 1
+    current_plot_settings.append({"id": plot_id, "type": plot_type, "value": value_type, "group_attributes": group_by, "mode": mode_selector})
+    return current_plot_settings
 
 
 #####################################################################################################################################################
@@ -82,10 +207,13 @@ def layout() -> html.Div:
     """
     return html.Div(
         [
+            dcc.Store(id="plot_settings_data", data=[], storage_type="memory"),
+            dcc.Store(id="plot2_possible_attributes", data=[], storage_type="session"),
             dcc.Store(id="settings", storage_type="session"),
             dcc.Store(id="selected_table_data", storage_type="session"),
             dcc.Store(id="plot_data_2d", storage_type="memory"),
             graph_setting(),
+            plot2_upload_card(),
             plot_config(),
             html.Div(children=[], id="2d_plot_chart", style={"padding": "20px"}),
         ],
@@ -93,213 +221,8 @@ def layout() -> html.Div:
     )
 
 
-#####################################################################################################################################################
-@app.callback(
-    Output("x_axis", "options"),
-    Output("y_axis", "options"),
-    Output("group_by", "options", allow_duplicate=True),
-    Input("select_2d_table", "value"),
-    State("table_data", "data"),
-    prevent_initial_call=True,
-)
-def selected_table(selected_tables: list[str], table_data: dict[str, list[dict]]) -> dict[str, list[dict]]:
-    """Update the selected table value.
-
-    Args:
-        selected_tables (list[str]): List of tables that have been selected.
-        table_data (dict[str, list[dict]]): The current stored data.
-
-    Returns:
-        dict[str, list[dict]]: A dictionary of the selected tables.
-    """
-
-    result = get_intersections_dict(selected_tables, table_data)
-    return result, result, result
-
-
-#####################################################################################################################################################
-@app.callback(
-    Output("2d_plot_chart", "children"),
-    Input("plot_data_2d", "data"),
-    State("x_axis", "value"),
-    State("y_axis", "value"),
-    State("select_2d_table", "value"),
-    State("multi_plots", "value"),
-)
-def gui_create_plot(plot_data_2d: list[dict], x_axis: str, y_axis: str, selected_tables: dict, use_multi_plot: list[bool]) -> list:
-    """Create Plot of the selected table and configuration.
-
-    Args:
-        plot_data_2d (list[dict]): The current cofig table.
-        x_axis (str): The selected attribute for the x_axis.
-        y_axis (str): The selected attribute for the y_axis.
-        selected_tables (dict): All selected table data.
-        use_multi_plot (list[bool]): True if multiple plots should be created.
-
-    Returns:
-        list: List of dcc.Graphs that should be plotted.
-    """
-    res = create_plot(plot_data_2d, x_axis, y_axis, selected_tables, use_multi_plot)
-    return dash.no_update if res is None else res
-
-
-#####################################################################################################################################################
-@app.callback(
-    Output("plot_data_2d", "data", allow_duplicate=True),
-    Output("plot_type", "value"),
-    Output("value_to_plot", "value"),
-    Output("group_by", "value"),
-    Input("add_plot_config", "n_clicks"),
-    State("plot_type", "value"),
-    State("value_to_plot", "value"),
-    State("group_by", "value"),
-    Input("plot_data_2d", "data"),
-    prevent_initial_call=True,
-)
-def update_plot_config(n_clicks: int, plot_type: str, value_to_plot: str, group_by: list[str], current_config: dict) -> dict:
-    """Update the plot config.
-
-    Args:
-        n_clicks (int): Click event.
-        plot_type (str): The type that should be plotted.
-        value_to_plot (str): Value that should be plotted.
-        group_by (list[str]): Group plot data by this attribute.
-        current_config (dict): The current config.
-
-    Returns:
-        dict: The updated config.
-    """
-    res = add_plot_data(n_clicks, plot_type, value_to_plot, group_by, current_config)
-    if res is None:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-    return res, None, None, None
-
-
-# #####################################################################################################################################################
-# @app.callback(Output("plot_data_2d", "data", allow_duplicate=True), Input("select_2d_table", "value"), prevent_initial_call=True)
-# def reset_table(current_table: dict) -> dict:
-#     """Reset the table.
-
-#     Args:
-#         current_table (dict): Data of the current table.
-
-#     Returns:
-#         dict: The initial config_table data.
-#     """
-#     if current_table is not None:
-#         return dash.no_update
-#     return {"settings": []}
-
-
-#####################################################################################################################################################
-@app.callback(Output("plot_settings", "data"), Input("plot_data_2d", "data"))
-def update_plot_settings(plot_data_2d: dict) -> list:
-    """Update the plot settings table.
-
-    Args:
-        plot_data_2d (dict): The current added config.
-
-    Returns:
-        list: List of dictionary that contains the configuration.
-    """
-    if plot_data_2d is None or len(plot_data_2d.get("plot_data", [])) < 1:
+@app.callback(Output("plot2_select_table", "options"), Input("table_data", "data"))
+def update_selectable_tables(data_tables: dict[str, list]) -> list[str]:
+    if not data_tables:
         return []
-    return dictionary_values_to_string(plot_data_2d["plot_data"])
-
-
-# #####################################################################################################################################################
-# @app.callback(
-#     Output("2d_table_select", "options", allow_duplicate=True), Input("url", "pathname"), State("table-data", "data"), prevent_initial_call=True
-# )
-# def display_page(pathname: str, table_data: dict) -> list[str]:
-#     """Change the webpage.
-
-#     Args:
-#         pathname (str): Name of the current path.
-
-#     Returns:
-#         tuple[html.Div, dict]: List with html components for page-content and data.
-#     """
-#     if table_data is None:
-#         return []
-#     return list(table_data)
-
-
-# #####################################################################################################################################################
-# @app.callback(Output("value_to_plot", "options"), Input("plot_type", "value"))
-# def update_possible_types(plot_type: str) -> list[str]:
-#     """Update possible config to create plots.
-
-#     Args:
-#         plot_type (str): The selected plot type.
-
-#     Returns:
-#         list[str]: List of selectable attributes.
-#     """
-#     if plot_type is None:
-#         return []
-#     if plot_type in ["Line", "Bar"]:
-#         return ["None","History", "Min", "Max", "Median", "Mean"]
-#     return []
-
-
-# #####################################################################################################################################################
-# @app.callback(Output("group_by", "options"), Input("value_to_plot", "value"), Input("x_axis", "options"))
-# def update_group_options(value_to_plot: str, attributes: list[str]) -> list[str]:
-#     """Update the possible group options.
-
-#     Args:
-#         value_to_plot (str): Selected value to plot.
-#         attributes (list[str]): The selectable attributes to select the grouping category.
-
-#     Returns:
-#         list[str]: List of attributes the dataset can be grouped by.
-#     """
-#     return grouping_options(value_to_plot, attributes)
-
-
-#####################################################################################################################################################
-@app.callback(Output("select_2d_table", "options"), Input("table_data", "data"))
-def update_selectable_data(table_data: dict[str, list[dict]]) -> list[str]:
-    """Update selectable data.
-
-    Args:
-        table_data (dict[str, list[dict]]): All uploaded datasets.
-
-    Returns:
-        list[str]: List of dataset keys.
-    """
-    return [] if table_data is None else list(table_data)
-
-
-# #####################################################################################################################################################
-# @app.callback(Output("plot_data_2d", "data"), Input("select_2d_table", "value"))
-# def reset_config_table(data: dict) -> dict:
-#     """Reset the plot_data_2d.
-
-#     Args:
-#         data (dict): The updated select_2d_table.
-
-#     Returns:
-#         dict: The new plot_config table.
-#     """
-#     return {"settings": []}
-
-
-# # #####################################################################################################################################################
-# # @app.callback(Output("selected_table_data", "data"), Input("select_2d_table", "value"), State("table_data", "data"))
-# # def selected_table(selected_tables: list[str], table_data: dict[str, list[dict]]) -> dict[str, list[dict]]:
-# #     """Update the selected table value.
-
-# #     Args:
-# #         selected_tables (list[str]): List of tables that have been selected.
-# #         table_data (dict[str, list[dict]]): The current stored data.
-
-# #     Returns:
-# #         dict[str, list[dict]]: A dictionary of the selected tables.
-# #     """
-# #     if selected_tables is None:
-# #         return dash.no_update
-# #     if table_data is None:
-# #         return dash.no_update
-# #     return {key: table_data[key] for key in selected_tables}
+    return list(data_tables)
