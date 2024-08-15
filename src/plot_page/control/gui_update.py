@@ -1,8 +1,8 @@
 import os
 from typing import Any
 
-from plot_page.control.data_operations import check_line_config
-from plot_page.control.plot_functions import plot_data
+from plot_page.control.data_operations import calculate_correlation, calculate_notlinear_regression, check_line_config
+from plot_page.control.plot_functions import plot_correlation_coefficient, plot_data, plot_notlinear_regression
 import pandas as pd
 
 from plot_page.data.global_variables import DATAFRAME_STORE
@@ -69,3 +69,32 @@ def grouping_options(value_type: str, attributes: list[str]) -> list[str]:
         list[str]: List of selectable grouping attributes.
     """
     return attributes if value_type in ["History", "Min", "Max", "Median", "Mean"] else []
+
+
+def correlation_evaluation(selected_table: str | None, main_attribute: str | None, second_attributes: list[str] | None) -> list:
+    if selected_table is None:
+        return []
+    if main_attribute is None:
+        return []
+    if second_attributes is None or len(second_attributes) < 1:
+        return []
+    loaded_selected_table = pd.read_pickle(os.path.join(DATAFRAME_STORE, f"{selected_table}.pkl"))
+    correlation_coefficient = calculate_correlation(loaded_selected_table, main_attribute, second_attributes)
+    return [plot_correlation_coefficient(loaded_selected_table, main_attribute, key, factor) for key, factor in correlation_coefficient.items()]
+
+
+def notlinear_regression_evaluation(
+    selected_table: str | None, main_attribute: str | None, second_attribute: str | None, selected_function: str | None
+) -> list:
+    if selected_table is None:
+        return []
+    if main_attribute is None:
+        return []
+    if second_attribute is None:
+        return []
+    if selected_function is None:
+        return []
+
+    loaded_selected_table = pd.read_pickle(os.path.join(DATAFRAME_STORE, f"{selected_table}.pkl"))
+    popt, pcov, res_string, model_func = calculate_notlinear_regression(loaded_selected_table, main_attribute, second_attribute, selected_function)
+    return plot_notlinear_regression(loaded_selected_table, main_attribute, second_attribute, popt, pcov, res_string, model_func)

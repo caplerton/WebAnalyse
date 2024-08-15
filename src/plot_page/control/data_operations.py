@@ -8,6 +8,19 @@ from typing import Any
 import pandas as pd
 
 from plot_page.data.global_variables import DATAFRAME_STORE
+from plot_page.control.data_analyse.notlinear_function import (
+    linear_model,
+    quadratic_model,
+    exponential_model,
+    logarithmic_model,
+    power_model,
+    sinus_model,
+    gaussian_model,
+    polynomial3_model,
+    polynomial4_model,
+    polynomial5_model,
+)
+from scipy.optimize import curve_fit
 
 
 #####################################################################################################################################################
@@ -208,3 +221,32 @@ def check_line_config(plot_type: str, value_to_plot: str, group_by: list[str]) -
         return None
 
     return {"type": plot_type, "plot_kind": value_to_plot, "group_attributes": group_by}
+
+
+def calculate_correlation(selected_data: pd.DataFrame, main_attribute: str, second_attributes: list[str]) -> dict[str, float]:
+    res = {}
+    for second_attribute in second_attributes:
+        try:
+            res[second_attribute] = selected_data[main_attribute].corr(selected_data[second_attribute])
+        except Exception:
+            continue
+    return res
+
+
+def calculate_notlinear_regression(selected_data: pd.DataFrame, main_attr: str, second_attr: str, selected_func: str):
+    select_data = {
+        "linear": (linear_model, (1, 1), "{} * x + {}"),
+        "quadratic": (quadratic_model, (1, 1, 1), "{} * x**2 + {} * x + {}"),
+        "exponential": (exponential_model, (1, 1, 1), "{} * e ** ({} * x) + {}"),
+        "logarithmic": (logarithmic_model, (1, 1, 1), "{} * log({} * x) + {}"),
+        "power": (power_model, (1, 1, 1), "{} * x**{} + {}"),
+        "sinus": (sinus_model, (1, 1, 1), "{} * sin({} * x + {})"),
+        "gaussian": (gaussian_model, (1, 1, 1, 1), " {} * e ** (-((x - {}) ** 2) / (2 * (**2)) + {} "),
+        "polynomial3": (polynomial3_model, (1, 1, 1, 1), "{} * x**3 + {} * x**2 + {} * x + {}"),
+        "polynomial4": (polynomial4_model, (1, 1, 1, 1, 1), "{} * x**4 + {} * x**3 + {} * x**2 + {} * x + {}"),
+        "polynomial5": (polynomial5_model, (1, 1, 1, 1, 1, 1), "{} * x**5 + {} * x**4 + {} * x**3 + {} * x**2 + {} * x + {}"),
+    }
+    model_func, optimization_tuple, res_string = select_data[selected_func]
+
+    popt, pcov = curve_fit(model_func, selected_data[second_attr], selected_data[main_attr], p0=optimization_tuple)
+    return popt, pcov, res_string, model_func

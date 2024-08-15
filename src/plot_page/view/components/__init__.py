@@ -18,6 +18,7 @@ def get_topbar() -> dbc.NavbarSimple:
         children=[
             dbc.NavItem(dbc.NavLink("Data", href="/")),
             dbc.NavItem(dbc.NavLink("2D-Plot", href="/plot_2d")),
+            dbc.NavItem(dbc.NavLink("Data-Analyse", href="/data_analyse")),
         ],
         brand="Analyse Dash App",
         brand_href="/",
