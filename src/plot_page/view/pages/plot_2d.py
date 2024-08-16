@@ -5,7 +5,7 @@ import dash_bootstrap_components as dbc
 from dash import Input, Output, State, dash_table, dcc, html
 from dash.dependencies import Input, Output
 
-from plot_page.app import app
+from plot_page.view.components.app import app
 from plot_page.control.base_functions import dictionary_values_to_string
 from plot_page.control.data_operations import check_line_config, filter_columns, get_intersections_dict
 from plot_page.control.gui_update import add_plot_data, create_plot, grouping_options

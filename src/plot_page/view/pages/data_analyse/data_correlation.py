@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 from dash import Input, Output, State, dash_table, dcc, html
 from dash.dependencies import Input, Output
 
-from plot_page.app import app
+from plot_page.view.components.app import app
 from plot_page.control.gui_update import correlation_evaluation
 from plot_page.control.plot_functions import plot_correlation_coefficient
 

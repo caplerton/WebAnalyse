@@ -1,10 +1,13 @@
-import dash
 from dash import Input, Output, State
 
-from plot_page.app import app
+from plot_page.view.components.app import app
 from plot_page.control.data_operations import prepare_upload_data
 from plot_page.view.components import page_layout  # noqa: F811
-from plot_page.view.pages import data_analyse, home, plot_2d
+from plot_page.view.pages import plot_2d
+from plot_page.view.pages.data_analyse import data_analyse_layout
+
+
+from plot_page.view.pages.upload import upload_layout
 
 if __name__ == "__main__":
     app.layout = page_layout()
@@ -29,9 +32,9 @@ def display_page(pathname: str) -> list:
     if pathname == "/plot_2d":
         return plot_2d.layout()
     if pathname == "/data_analyse":
-        return data_analyse.layout()
+        return data_analyse_layout()
     else:
-        return home.layout()
+        return upload_layout()
 
 
 #####################################################################################################################################################

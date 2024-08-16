@@ -1,15 +1,13 @@
-import dash
+"""DataAnalyse Page."""
+
 import dash_bootstrap_components as dbc
-from dash import Input, Output, State, dash_table, dcc, html
+from dash import Input, Output, State, dcc, html
 from dash.dependencies import Input, Output
 
-from plot_page.app import app
-from plot_page.control.base_functions import dictionary_values_to_string
-from plot_page.control.data_operations import check_line_config, filter_columns, get_intersections_dict
-from plot_page.control.gui_update import add_plot_data, create_plot, grouping_options
-from plot_page.control.plot_functions import plot_data
+from plot_page.view.components.app import app
+
 from plot_page.view.components import get_upload_component
-from plot_page.view.pages.data_subpages import data_correlation, data_notlinear_regression
+from plot_page.view.pages.data_analyse import data_correlation, data_notlinear_regression
 
 
 #####################################################################################################################################################
@@ -32,7 +30,7 @@ def graph_setting() -> dbc.Card:
     )
 
 
-def layout() -> html.Div:
+def data_analyse_layout() -> html.Div:
     return html.Div(
         [
             dcc.Store(id="data_attribute_options", data=[]),

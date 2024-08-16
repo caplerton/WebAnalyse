@@ -6,7 +6,7 @@ import dash_bootstrap_components as dbc
 from dash import Input, Output, State, dash_table, dcc, html
 import pandas as pd
 
-from plot_page.app import app
+from plot_page.view.components.app import app
 from plot_page.control.data_operations import add_dataset
 from plot_page.control.table_operations import query_table
 from plot_page.data.global_variables import DATAFRAME_STORE
@@ -98,7 +98,7 @@ def upload_remove_selected_table(n_clicks: int, selected_table: str | None, tabl
 
 
 #####################################################################################################################################################
-def layout() -> html.Div:
+def upload_layout() -> html.Div:
     """The data home layout.
 
     Returns:
