@@ -1,15 +1,14 @@
-"""Functions to visualise the home page."""
+"""Page to update and modify data.."""
 
-import os
 import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, State, dash_table, dcc, html
-import pandas as pd
 
+from plot_page.control.data_operation.extract_information import query_table
+from plot_page.control.visualisation.gui_control import upload_create_filtered_dataset
+from plot_page.data.panda_data import remove_dataframe
 from plot_page.view.components.app import app
-from plot_page.control.data_operations import add_dataset
-from plot_page.control.table_operations import query_table
-from plot_page.data.global_variables import DATAFRAME_STORE
+
 from plot_page.view.components import get_upload_component
 
 
@@ -31,7 +30,13 @@ def explanation_card() -> html.Div:
     )
 
 
+#####################################################################################################################################################
 def create_query_components() -> html.Div:
+    """Card to add queries that should be applied on the selected table.
+
+    Returns:
+        html.Div: A html.Div that can be used to apply queries on the dataframe.
+    """
     return html.Div(
         dbc.Row(
             [
@@ -79,24 +84,6 @@ def create_table_card() -> dbc.Card:
     )
 
 
-@app.callback(
-    Output("table_data", "data", allow_duplicate=True),
-    Input("upload_remove_table", "n_clicks"),
-    State("upload_selected_table", "value"),
-    State("table_data", "data"),
-    prevent_initial_call=True,
-)
-def upload_remove_selected_table(n_clicks: int, selected_table: str | None, table_data: dict[str, list]) -> dict[str, list]:
-    if n_clicks is None or selected_table is None:
-        return dash.no_update
-    file_path = os.path.join(DATAFRAME_STORE, f"{selected_table}.pkl")
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    if selected_table in table_data:
-        table_data.pop(selected_table)
-    return table_data
-
-
 #####################################################################################################################################################
 def upload_layout() -> html.Div:
     """The data home layout.
@@ -115,6 +102,34 @@ def upload_layout() -> html.Div:
     )
 
 
+####################################################################################################################################################
+@app.callback(
+    Output("table_data", "data", allow_duplicate=True),
+    Input("upload_remove_table", "n_clicks"),
+    State("upload_selected_table", "value"),
+    State("table_data", "data"),
+    prevent_initial_call=True,
+)
+def upload_remove_selected_table(n_clicks: int, selected_table: str | None, table_data: dict[str, list]) -> dict[str, list]:
+    """Remove a stored dataframe.
+
+    Args:
+        n_clicks (int): Remove clicke event.
+        selected_table (str | None): Delete the dataset with this name.
+        table_data (dict[str, list]): The current Information about the datasets.
+
+    Returns:
+        dict[str, list]: The updated information about the dataset.
+    """
+    if n_clicks is None or selected_table is None:
+        return dash.no_update
+    remove_dataframe(selected_table)
+    if selected_table in table_data:
+        table_data.pop(selected_table)
+    return table_data
+
+
+####################################################################################################################################################
 @app.callback(
     Output("table_data", "data"),
     Output("upload_save_name", "value"),
@@ -126,28 +141,39 @@ def upload_layout() -> html.Div:
 )
 def upload_save_filtered_dataset(
     n_clicks: int | None, selected_table: str | None, table_name: str | None, query_list: list[str], table_data: dict[str, list]
-) -> dict[str, list]:
-    if n_clicks is None:
-        return dash.no_update, dash.no_update
-    if selected_table is None:
-        return dash.no_update, dash.no_update
-    if table_name is None or len(table_name) < 1:
-        return dash.no_update, dash.no_update
+) -> tuple[dict[str, list], str]:
+    """Save the modified dataset.
 
-    res_dataframe = query_table(selected_table, query_list)
-    pd.to_pickle(res_dataframe, os.path.join(DATAFRAME_STORE, f"{table_name}.pkl"))
-    table_data[table_name] = list(res_dataframe.columns)
-    return table_data, ""
+    Args:
+        n_clicks (int | None): Execute this function when click event happens.
+        selected_table (str | None): The current selected data.
+        table_name (str | None): The name for the new dataset.
+        query_list (list[str]): List of queries that where executed on the dataset.
+        table_data (dict[str, list]): The existing dict of dataset.
+
+    Returns:
+        tuple[dict[str, list], str]: The updated dictionary of dataset and default value for input component.
+    """
+    res, res_string = upload_create_filtered_dataset(n_clicks, selected_table, table_name, query_list, table_data)
+    return res if res else dash.no_update
 
 
+####################################################################################################################################################
 @app.callback(Output("plot_table", "data"), Input("upload_selected_table", "value"), Input("upload_query_list", "data"))
 def upload_update_plot(selected_table: str | None, query_list: list[str]) -> list[dict]:
-    if selected_table is None:
-        return dash.no_update
-    res_dataframe = query_table(selected_table, query_list)
-    return res_dataframe.to_dict("records")
+    """Update data that should be shown.
+
+    Args:
+        selected_table (str | None): The current selected table.
+        query_list (list[str]): List of all queries that should be applied on the selected table.
+
+    Returns:
+        list[dict]: List of data records that should be shown.
+    """
+    return query_table(selected_table, query_list).to_dict("records") if selected_table else dash.no_update
 
 
+####################################################################################################################################################
 @app.callback(
     Output("upload_query_list", "data"),
     Output("upload_query_input", "value"),
@@ -159,6 +185,17 @@ def upload_update_plot(selected_table: str | None, query_list: list[str]) -> lis
 def upload_update_query_list(
     remove_click: int | None, add_click: int | None, new_query: str | None, current_queries: list[str]
 ) -> tuple[list[str], str]:
+    """Add/remove query from the list.
+
+    Args:
+        remove_click (int | None): Remove button click event.
+        add_click (int | None): Add button click event.
+        new_query (str | None): The query that should be added to the list.
+        current_queries (list[str]): List of current queries.
+
+    Returns:
+        tuple[list[str], str]: New query list and updated value for query_input.
+    """
     if remove_click is not None:
         return [], ""
 
@@ -167,11 +204,18 @@ def upload_update_query_list(
     return [new_query] + current_queries, ""
 
 
+####################################################################################################################################################
 @app.callback(Output("upload_query_output", "children"), Input("upload_query_list", "data"))
 def upload_update_query_output(query_list: list[str] | None) -> html.P:
-    if query_list is None:
-        return dash.no_update
-    return [html.P(", ".join(query_list))]
+    """Shows all query statements.
+
+    Args:
+        query_list (list[str] | None): List of current queries.
+
+    Returns:
+        html.P: An paragraph that shows all queries separated by ",".
+    """
+    return [html.P(", ".join(query_list))] if query_list else dash.no_update
 
 
 ####################################################################################################################################################
@@ -180,11 +224,9 @@ def upload_table_selction_options(table_data: dict[str, list[dict]] | None) -> l
     """Update available data options.
 
     Args:
-        table_data (dict[str, list[dict]]): The current uploaded data options.
+        table_data (dict[str, list[dict]] | None): The current uploaded data options.
 
     Returns:
         list[str]: List of all keys in table_data.
     """
-    if table_data is None:
-        return dash.no_update
-    return list(table_data)
+    return list(table_data) if table_data else dash.no_update

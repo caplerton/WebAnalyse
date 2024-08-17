@@ -1,14 +1,20 @@
+"""Correlation page."""
+
 import dash
 import dash_bootstrap_components as dbc
-from dash import Input, Output, State, dash_table, dcc, html
-from dash.dependencies import Input, Output
+from dash import Input, Output, State, dcc, html
 
+from plot_page.control.visualisation.gui_control import correlation_evaluation
 from plot_page.view.components.app import app
-from plot_page.control.gui_update import correlation_evaluation
-from plot_page.control.plot_functions import plot_correlation_coefficient
 
 
+#####################################################################################################################################################
 def layout() -> dbc.Card:
+    """Correlation page.
+
+    Returns:
+        dbc.Card: The layout of the correlation page.
+    """
     return dbc.Card(
         [
             html.H1("CORRELATION COEFFICIENT", style={"textAlign": "center"}),
@@ -24,16 +30,25 @@ def layout() -> dbc.Card:
     )
 
 
+#####################################################################################################################################################
 @app.callback(
     Output("data_correlation_main_attribute", "options"),
     Output("data_correlation_second_attributes", "options"),
     Input("data_attribute_options", "data"),
 )
 def data_correlation_attributes(attributes: list[str]) -> tuple[list[str]]:
-    ret_val = [] if attributes is None else attributes
-    return ret_val, ret_val
+    """Update the attribute options.
+
+    Args:
+        attributes (list[str]): Attribute list of the selected table.
+
+    Returns:
+        tuple[list[str]]: Returns the attributes to multiple components.
+    """
+    return (attributes, attributes) if attributes else ([], [])
 
 
+#####################################################################################################################################################
 @app.callback(
     Output("data_analyse_content", "children", allow_duplicate=True),
     Input("data_correlation_evaluation", "n_clicks"),
@@ -45,6 +60,15 @@ def data_correlation_attributes(attributes: list[str]) -> tuple[list[str]]:
 def data_correlation_update_output(
     n_clicks: int | None, selected_table: str | None, main_attribute: str | None, second_attributes: list[str] | None
 ) -> list[html.Div]:
-    if n_clicks is None:
-        return dash.no_update
-    return correlation_evaluation(selected_table, main_attribute, second_attributes)
+    """Show the correlation result.
+
+    Args:
+        n_clicks (int | None): Click event.
+        selected_table (str | None): The current selected table.
+        main_attribute (str | None): The primary attribute.
+        second_attributes (list[str] | None): The secondary attribute.
+
+    Returns:
+        list[html.Div]: List of html components that are used to visualise the result.
+    """
+    return correlation_evaluation(selected_table, main_attribute, second_attributes) if n_clicks else dash.no_update

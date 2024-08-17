@@ -5,11 +5,11 @@ import pandas as pd
 import plotly.graph_objects as go
 from dash import dcc
 
-from plot_page.control.data_operations import split_data
+from plot_page.control.data_operation.modify_data import split_data
 
 
 #####################################################################################################################################################
-def plot_data(data_table: dict[str, list[dict]], plot_setting: list[dict], title: str, x_axis: str, y_axis: str) -> dcc.Graph:
+def plot_2d_data(data_table: dict[str, list[dict]], plot_setting: list[dict], title: str, x_axis: str, y_axis: str) -> dcc.Graph:
     """Plot the selected tables ans settings.
 
     Args:
@@ -106,7 +106,19 @@ def plot_bar(fig: go.Figure, splitted_data: dict[str, pd.DataFrame], x_axis: str
             fig.add_trace(go.Bar(x=plot_data.index.values, y=plot_data, name=f"mean{key}"))
 
 
-def plot_correlation_coefficient(loaded_data: pd.DataFrame, main_attribute: str, key: str, factor: float) -> list[dcc.Graph]:
+#####################################################################################################################################################
+def plot_correlation_coefficient(loaded_data: pd.DataFrame, main_attribute: str, key: str, factor: float) -> dcc.Graph:
+    """Plot the calculated correlation coefficient.
+
+    Args:
+        loaded_data (pd.DataFrame): The loaded dataframe.
+        main_attribute (str): The name of the primary attribute.
+        key (str): The name of the secondary attribute.
+        factor (float): The correlation factor.
+
+    Returns:
+        dcc.Graph: The plotted correlation coefficient.
+    """
     normalized_factor = (factor - (-1)) / (1 - (-1))
 
     x_value = loaded_data[key]
@@ -117,29 +129,39 @@ def plot_correlation_coefficient(loaded_data: pd.DataFrame, main_attribute: str,
     figure = go.Figure()
     figure.update_layout(title=f"Correlation Coefficient {main_attribute} {key} - factor {factor} ", xaxis_title=key, yaxis_title=main_attribute)
     figure.add_trace(go.Scatter(x=x_value, y=y_value, mode="markers", name="Datapoints"))
-    # figure.add_trace(
-    #     go.Line(
-    #         y=[y_max - ((y_max - y_min) * normalized_factor), y_min + ((y_max - y_min) * normalized_factor)],
-    #         x=[x_value.min(), x_value.max()],
-    #         name="Correlation coefficient",
-    #     )
-    # )
+
     figure.add_trace(
         go.Scatter(
             y=[y_max - ((y_max - y_min) * normalized_factor), y_min + ((y_max - y_min) * normalized_factor)],
             x=[x_value.min(), x_value.max()],
             mode="lines",
             name="Linear Regression",
-            line=dict(color="red"),  # Initial style
+            line=dict(color="red"),
         )
     )
 
     return dcc.Graph(figure=figure)
 
 
+#####################################################################################################################################################
 def plot_notlinear_regression(
-    loaded_data: pd.DataFrame, main_attribute: str, second_attribute, popt, pcov, res_string, model_func
+    loaded_data: pd.DataFrame, main_attribute: str, second_attribute: str, popt: tuple[float], pcov, res_string: str, model_func: callable
 ) -> list[dcc.Graph]:
+    """Plot the nonlinear regression evaluation.-
+
+    Args:
+        loaded_data (pd.DataFrame): The dataframe that has been evaluated.
+        main_attribute (str): The main attribute under observation
+        second_attribute (str): The second attribute.
+        popt (tuple[float]): The function parameters.
+        pcov (_type_): Coverage of the result.
+        res_string (str): Function string to show the resulting parameters.
+        model_func (callable): The learned function that might fits the dataset.
+
+    Returns:
+        list[dcc.Graph]: List of dcc.Graph to show the evaluation.
+    """
+
     function_string = res_string.format(*popt)
 
     x_value = loaded_data[second_attribute]
@@ -162,7 +184,7 @@ def plot_notlinear_regression(
             y=test["y_value"],
             mode="lines+markers",
             name="Linear Regression",
-            line=dict(color="red"),  # Initial style
+            line=dict(color="red"),
         )
     )
     return [dcc.Graph(figure=figure)]

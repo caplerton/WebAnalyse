@@ -1,10 +1,10 @@
 """Functions for visualisation of basic components."""
 
 import dash_bootstrap_components as dbc
-from dash import Input, Output, dcc, html
-import os
-import pandas as pd
-from plot_page.data.global_variables import DATAFRAME_STORE
+from dash import dcc, html
+
+
+from plot_page.data.panda_data import list_dataframes, load_dataframe
 
 
 #####################################################################################################################################################
@@ -34,9 +34,8 @@ def page_layout() -> html.Div:
     Returns:
         html.Div: Div that contains the base layout.
     """
-    existing_data = {
-        key[:-4]: list(pd.read_pickle(os.path.join(DATAFRAME_STORE, key)).columns) for key in os.listdir(DATAFRAME_STORE) if key.endswith(".pkl")
-    }
+    load_dataframe
+    existing_data = {key[:-4]: list(load_dataframe(key).columns) for key in list_dataframes() if key.endswith(".pkl")}
     return html.Div(
         [
             dcc.Location(id="url", refresh=False),

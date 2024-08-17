@@ -1,13 +1,21 @@
+"""Notlinear regression analyse page."""
+
 import dash
 import dash_bootstrap_components as dbc
-from dash import Input, Output, State, dash_table, dcc, html
+from dash import Input, Output, State, dcc, html
 from dash.dependencies import Input, Output
 
+from plot_page.control.visualisation.gui_control import notlinear_regression_evaluation
 from plot_page.view.components.app import app
-from plot_page.control.gui_update import notlinear_regression_evaluation
 
 
+#####################################################################################################################################################
 def layout() -> html.Div:
+    """Notlinear regression layout.
+
+    Returns:
+        html.Div: Notlinear regression content.
+    """
     return dbc.Card(
         [
             html.H1("NOTLINEAR REGRESSION", style={"textAlign": "center"}),
@@ -55,16 +63,25 @@ def layout() -> html.Div:
     )
 
 
+#####################################################################################################################################################
 @app.callback(
     Output("data_notlinear_regression_attribute1", "options"),
     Output("data_notlinear_regression_attribute2", "options"),
     Input("data_attribute_options", "data"),
 )
-def data_correlation_attributes(attributes: list[str]) -> tuple[list[str]]:
-    ret_val = [] if attributes is None else attributes
-    return ret_val, ret_val
+def data_notlinear_attributes(attributes: list[str]) -> tuple[list[str]]:
+    """Update the attribute options.
+
+    Args:
+        attributes (list[str]): Attribute list of the selected table.
+
+    Returns:
+        tuple[list[str]]: Returns the attributes to multiple components.
+    """
+    return (attributes, attributes) if attributes else ([], [])
 
 
+#####################################################################################################################################################
 @app.callback(
     Output("data_analyse_notlinear", "children", allow_duplicate=True),
     Input("data_notlinear_regression_evaluation", "n_clicks"),
@@ -74,9 +91,19 @@ def data_correlation_attributes(attributes: list[str]) -> tuple[list[str]]:
     State("data_notlinear_regression_model", "value"),
     prevent_initial_call=True,
 )
-def data_correlation_update_output(
+def notlinear_regression_output(
     n_clicks: int | None, selected_table: str | None, main_attribute: str | None, second_attributes: str | None, selected_model: str | None
 ) -> list[html.Div]:
-    if n_clicks is None:
-        return dash.no_update
-    return notlinear_regression_evaluation(selected_table, main_attribute, second_attributes, selected_model)
+    """Plot the notlinear regression result for the selected attributes when requested.
+
+    Args:
+        n_clicks (int | None): React on click event.
+        selected_table (str | None): The current selected table.
+        main_attribute (str | None): The selected primary attribute.
+        second_attributes (str | None): The selected secondary attribute.
+        selected_model (str | None): The selected notlinear model that should be trained.
+
+    Returns:
+        list[html.Div]: The resulting plot that shows the notlinear regression result.
+    """
+    return notlinear_regression_evaluation(selected_table, main_attribute, second_attributes, selected_model) if n_clicks else dash.no_update
