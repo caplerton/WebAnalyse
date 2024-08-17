@@ -30,21 +30,3 @@ def write_json(json_path: str, data: dict) -> None:
     """
     with open(json_path, mode="w", encoding="utf-8") as json_file:
         json.dump(data, json_file)
-
-
-# #####################################################################################################################################################
-# def parse_contents(contents: str, filename: str) -> dict[str, dict]:
-#     """Convert the uploaded file to a json Object.
-
-#     Args:
-#         contents (str): The content of the file.
-#         filename (str): The name of the file.
-
-#     Returns:
-#         dict[str, dict]: Dictionary with filename as key and content as dictionary.
-#     """
-#     _, content_string = contents.split(",")
-#     decoded = base64.b64decode(content_string)
-#     if filename.__contains__(".json"):
-#         return {filename: json.loads(decoded)}
-#     return {}
