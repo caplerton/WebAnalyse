@@ -175,20 +175,17 @@ def upload_update_plot(selected_table: str | None, query_list: list[str]) -> lis
 
 ####################################################################################################################################################
 @app.callback(
-    Output("upload_query_list", "data"),
-    Output("upload_query_input", "value"),
-    Input("upload_query_remove_button", "n_clicks"),
+    Output("upload_query_list", "data", allow_duplicate=True),
+    Output("upload_query_input", "value", allow_duplicate=True),
     Input("upload_query_add_button", "n_clicks"),
     State("upload_query_input", "value"),
     State("upload_query_list", "data"),
+    prevent_initial_call=True,
 )
-def upload_update_query_list(
-    remove_click: int | None, add_click: int | None, new_query: str | None, current_queries: list[str]
-) -> tuple[list[str], str]:
-    """Add/remove query from the list.
+def upload_update_query_list(add_click: int | None, new_query: str | None, current_queries: list[str]) -> tuple[list[str], str]:
+    """Add query to the list.
 
     Args:
-        remove_click (int | None): Remove button click event.
         add_click (int | None): Add button click event.
         new_query (str | None): The query that should be added to the list.
         current_queries (list[str]): List of current queries.
@@ -196,12 +193,31 @@ def upload_update_query_list(
     Returns:
         tuple[list[str], str]: New query list and updated value for query_input.
     """
-    if remove_click is not None:
-        return [], ""
 
     if add_click is None or new_query is None or len(new_query) < 3:
         return dash.no_update, dash.no_update
     return [new_query] + current_queries, ""
+
+
+####################################################################################################################################################
+@app.callback(
+    Output("upload_query_list", "data", allow_duplicate=True),
+    Output("upload_query_input", "value"),
+    Input("upload_query_remove_button", "n_clicks"),
+    prevent_initial_call=True,
+)
+def upload_remove_query_list(remove_click: int | None) -> tuple[list[str], str]:
+    """Remove query from the list.
+
+    Args:
+        remove_click (int | None): Remove button click event.
+
+    Returns:
+        tuple[list[str], str]: New query list and updated value for query_input.
+    """
+    if remove_click is not None:
+        return [], ""
+    return dash.no_update, dash.no_update
 
 
 ####################################################################################################################################################
@@ -215,7 +231,7 @@ def upload_update_query_output(query_list: list[str] | None) -> html.P:
     Returns:
         html.P: An paragraph that shows all queries separated by ",".
     """
-    return [html.P(", ".join(query_list))] if query_list else dash.no_update
+    return [html.P(", ".join(query_list))] if query_list else []
 
 
 ####################################################################################################################################################
