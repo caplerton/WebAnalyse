@@ -1,6 +1,7 @@
-from dash import Dash
-import dash_bootstrap_components as dbc
+"""App components that need to be used by all pages."""
 
+import dash_bootstrap_components as dbc
+from dash import Dash
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "Analyse Dash App"

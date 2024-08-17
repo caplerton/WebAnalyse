@@ -1,16 +1,20 @@
-import dash
 from dash import Input, Output, State
 
-from plot_page.app import app
-from plot_page.control.data_operations import prepare_upload_data
-from plot_page.view.layout import page_layout  # noqa: F811
-from plot_page.view.pages import home, plot_2d
+from plot_page.control.data_operation.management_data import prepare_upload_data
+from plot_page.view.components import page_layout  # noqa: F811
+from plot_page.view.components.app import app
+from plot_page.view.pages.data_analyse import data_analyse_layout
+
+
+from plot_page.view.pages.upload import upload_layout
+from plot_page.view.pages.visualization.plot2d import plot2d_layout
 
 if __name__ == "__main__":
     app.layout = page_layout()
     app.run_server(debug=True)
 
 
+#####################################################################################################################################################
 @app.callback(
     Output("page-content", "children"),
     Input("url", "pathname"),
@@ -26,9 +30,11 @@ def display_page(pathname: str) -> list:
         tuple[html.Div, dict]: List with html components for page-content and data.
     """
     if pathname == "/plot_2d":
-        return plot_2d.layout()
+        return plot2d_layout()
+    if pathname == "/data_analyse":
+        return data_analyse_layout()
     else:
-        return home.layout()
+        return upload_layout()
 
 
 #####################################################################################################################################################
@@ -47,8 +53,4 @@ def upload_data(contents: str, filenames: str, table_data: None | dict[str, dict
         filenames (str): Name of the uploaded file.
         table_data (None | dict[str, dict]): The current stored data.
     """
-    if contents is None or filenames is None:
-        return dash.no_update
-    for uploaded_data in zip(filenames, contents):
-        table_data = prepare_upload_data(uploaded_data, table_data)
-    return table_data
+    return prepare_upload_data(contents, filenames, table_data)

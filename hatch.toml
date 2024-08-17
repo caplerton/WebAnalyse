@@ -26,6 +26,7 @@ dependencies = [
   "black>=22.10.0",
   "mypy>=0.991",
   "ruff>=0.0.166",
+  "scipy>=1.14.0"
 ]
 [envs.lint.scripts]
 typing = "mypy --install-types --non-interactive {args:hatch_containers tests}"
